@@ -17,6 +17,8 @@ export type {
 
 export { getSourceAlphaMap } from './alpha-maps.js';
 
+export { addWatermarkRegion, removeWatermarkRegion } from './blend.js';
+
 export {
   getWatermarkConfig,
   getWatermarkSize,
