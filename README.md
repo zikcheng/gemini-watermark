@@ -84,8 +84,14 @@ skip.
 | Alpha maps (baked calibration data) | ⏳ |
 | Reverse alpha blend (remove / add) | ⏳ |
 | Three-stage NCC detection | ⏳ |
-| Guided multi-scale detection (snap) | ⏳ |
-| Soft inpaint residual cleanup | ⏳ |
+| Guided multi-scale detection (snap) | ❌ M7 (not in v0.1.0) |
+| Soft inpaint residual cleanup | ❌ M7 (not in v0.1.0) |
+
+The equivalence infrastructure those modules are tested against is already
+in place: `tools/reference/` regenerates the reference kit from the pinned
+C++ binary and validates it, and `test/data/` carries the committed oracle
+— geometry fixtures, the detection/score manifest, per-case image patches
+for CI, and the cv2 quantization dump.
 
 ## License & attribution
 
