@@ -24,14 +24,24 @@ vitest + ESM-only + TypeScript pinned to 5.9 — do not upgrade to TS 7),
 `src/types.ts` + `src/position.ts` ported with 21 equivalence tests,
 CI (Node 20/22/24) green. No other modules started.
 
-**Reference assets (what M0 migrates/eliminates; currently existing only
-on the maintainer's machine)**:
+**Reference assets**: M0 eliminated the machine-local dependency. The
+generation scripts are in-repo under `tools/reference/`, take every path
+from `GWT_UPSTREAM_DIR` / `GWT_REFERENCE_DIR` (no defaults — a missing
+variable exits 2), and verify the pinned binary hash and upstream commit
+before producing anything. The kit itself is still generated locally
+rather than committed — it is far too large — but any machine can now
+rebuild a **pixel-identical** one from the repo. (Byte-identical files
+additionally require the pinned `tools/reference/requirements.txt`
+toolchain: a different Pillow re-encodes the same pixels into different
+PNG bytes, which is why the oracle hashes decoded pixels rather than
+files — see `docs/plan/DEVIATIONS.md` D1.)
 
-| Asset | Current location | Contents |
+| Asset | Location | Contents |
 |---|---|---|
-| Upstream C++ checkout | local `/Users/zikcheng/GeminiWatermarkTool` | v0.3.2, commit `7c6a99f` |
-| Reference kit | local `~/gwt-reference/` (its README documents regeneration steps and porting pitfalls) | `bin/gwt-mini` (v0.3.2 release binary, SHA256 `8f4796a1…`, full value in M0.md), `alpha/` — 4 calibrated PNGs, `scripts/` — 3 Python scripts (hardcoded paths; the M0 migration target), `fixtures/` (11 watermarked + 3 clean), `golden/` (default/ + force/ + manifest.json) |
-| Committed test data | repo `test/data/fixtures.json` | geometry expectations |
+| Upstream C++ checkout | `$GWT_UPSTREAM_DIR` (machine-local clone) | v0.3.2, commit `7c6a99f`; verified by `git rev-parse` before use |
+| Reference kit | `$GWT_REFERENCE_DIR` (machine-local, regenerated from `tools/reference/`) | `bin/gwt-mini` (v0.3.2 release binary, SHA256 `8f4796a1…`, full value in M0.md), `alpha/` — 4 calibrated PNGs, `fixtures/` (11 watermarked + 3 clean), `golden/` (default/ + force/ + forced_size/ + manifest.json) |
+| Generation scripts | repo `tools/reference/` | 5 parameterized Python scripts (extract_alpha, make_fixtures, gen_golden, validate_manifest, make_patches) + `manifest.schema.json` + pinned `requirements.txt` |
+| Committed test data | repo `test/data/` | `fixtures.json` (geometry expectations), `manifest.json` (decision/score oracle), `cases/` (patch + blend crops for CI) |
 
 **Glossary**:
 

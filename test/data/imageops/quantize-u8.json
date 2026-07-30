@@ -1,0 +1,135 @@
+{
+  "format_version": 1,
+  "name": "quantize-u8",
+  "cv2_version": "5.0.0",
+  "command": "python3 tools/reference/dump_imageops.py --only quantize-u8",
+  "description": "saturate_cast<uchar> applied to float32, as measured in opencv-python 5.0.0. This is the operation C++ uses to write blend results back (convertTo(CV_8UC3)), but measured in a different OpenCV build than the reference binary \u2014 see measured_against. Consumed by src/quantize.ts (M2).",
+  "measured_via": [
+    "cv2.add(src, 0, dtype=CV_8U)",
+    "cv2.addWeighted(src, 1, zeros, 0, 0, dtype=CV_8U)",
+    "cv2.normalize(src, NORM_MINMAX, alpha=min, beta=max, dtype=CV_8U)",
+    "cv2.subtract(src, 0, dtype=CV_8U)"
+  ],
+  "routes_agree": true,
+  "route_notes": {
+    "cv2.normalize(src, NORM_MINMAX, alpha=min, beta=max, dtype=CV_8U)": "The only route that literally calls Mat::convertTo. It is an identity rescale only because alpha/beta are this sample set's own extremes, so it corroborates the arithmetic routes on exactly these values and cannot be reused to probe other inputs independently."
+  },
+  "measured_against": {
+    "opencv_python": "5.0.0",
+    "reference_binary_opencv": "4.11.0",
+    "reference_binary_opencv_source": "statically linked; version string read out of $GWT_REFERENCE_DIR/bin/gwt-mini",
+    "caveat": "The two OpenCV versions differ. cvRound is documented as implementation- and FP-rounding-mode-dependent, so this dump pins the law for the port's own arithmetic but is not self-sufficient proof that the reference binary rounds the same way. What actually ties the law to the binary is the golden-force pixel comparison in M2 (restored pixels within +-1, outside-region byte-exact); if that ever disagrees, the golden images win over this dump."
+  },
+  "reference_law": "clamp(half-to-even(v), 0, 255)",
+  "reference_law_matches_measurement": true,
+  "samples": [
+    {
+      "label": "-0.6",
+      "input": -0.6000000238418579,
+      "output": 0,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "-0.5",
+      "input": -0.5,
+      "output": 0,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "0.0",
+      "input": 0.0,
+      "output": 0,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "0.4",
+      "input": 0.4000000059604645,
+      "output": 0,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "nextafter(0.5, 0)",
+      "input": 0.4999999701976776,
+      "output": 0,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "0.5",
+      "input": 0.5,
+      "output": 0,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "nextafter(0.5, 1)",
+      "input": 0.5000000596046448,
+      "output": 1,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "1.5",
+      "input": 1.5,
+      "output": 2,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "2.5",
+      "input": 2.5,
+      "output": 2,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "3.5",
+      "input": 3.5,
+      "output": 4,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "127.5",
+      "input": 127.5,
+      "output": 128,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "128.5",
+      "input": 128.5,
+      "output": 128,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "253.5",
+      "input": 253.5,
+      "output": 254,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "254.5",
+      "input": 254.5,
+      "output": 254,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "255.0",
+      "input": 255.0,
+      "output": 255,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "255.4",
+      "input": 255.39999389648438,
+      "output": 255,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "255.5",
+      "input": 255.5,
+      "output": 255,
+      "matches_clamped_half_even": true
+    },
+    {
+      "label": "256.4",
+      "input": 256.3999938964844,
+      "output": 255,
+      "matches_clamped_half_even": true
+    }
+  ]
+}

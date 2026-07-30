@@ -1,0 +1,29 @@
+{
+  "name": "clean-800x600",
+  "original_size": {
+    "width": 800,
+    "height": 600
+  },
+  "input_format": "png",
+  "eligible_for": [
+    "detection",
+    "default_e2e"
+  ],
+  "fixture": null,
+  "patch": {
+    "bbox": {
+      "x": 697,
+      "y": 461,
+      "w": 79,
+      "h": 115
+    },
+    "channels": 3,
+    "files": {
+      "watermarked": {
+        "file": "patch-watermarked.png",
+        "decoded_pixel_sha256": "69438588212bbc45f8fdce0ba11d42d061dd210821072fa0d6374795b23f009a"
+      }
+    }
+  },
+  "blend": null
+}
