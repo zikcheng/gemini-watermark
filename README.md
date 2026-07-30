@@ -82,7 +82,7 @@ skip.
 |---|---|
 | Position config (V1/V2, canonical inference) | ✅ ported + tested |
 | Alpha maps (baked calibration data) | ✅ ported + tested |
-| Reverse alpha blend (remove / add) | ⏳ |
+| Reverse alpha blend (remove / add) | ✅ ported + tested |
 | Three-stage NCC detection | ⏳ |
 | Guided multi-scale detection (snap) | ❌ M7 (not in v0.1.0) |
 | Soft inpaint residual cleanup | ❌ M7 (not in v0.1.0) |
