@@ -192,3 +192,59 @@ say which form it used.
   exact value sits within 1.5e-3 of a rounding boundary could quantize
   differently. If an M2 golden comparison ever fails by exactly 1 on
   isolated pixels, check this before suspecting the blend math.
+
+---
+
+## D5 — the quantization oracle and the reference binary use different OpenCV majors
+
+**Milestone**: M0 supplementary commit (recorded) · M1/M2 (evidence added)
+· 2026-07-31
+
+**Symptom**: `test/data/imageops/quantize-u8.json` pins the
+`saturate_cast<uchar>` rounding law that `src/quantize.ts` implements, but
+it was measured with **opencv-python 5.0.0** while the reference binary
+statically links **OpenCV 4.11.0**. `cvRound` is documented as
+implementation- and FP-rounding-mode-dependent, so on its own the dump is
+not proof that the binary rounds the same way. Taken uncritically it would
+be circular: the port would be verified against a measurement of a
+different build than the one producing the golden images.
+
+**Evidence**:
+
+The version gap is measured, not assumed —
+
+```
+strings -a $GWT_REFERENCE_DIR/bin/gwt-mini | grep -oE 'OpenCV [0-9.]+'  ->  OpenCV 4.11.0
+otool -L  $GWT_REFERENCE_DIR/bin/gwt-mini | grep -i opencv              ->  (none: static)
+```
+
+The gap is closed empirically by M2, which compares this port's
+`removeWatermarkRegion` against the binary's own `--force` output on the
+committed blend crops. Over the 10 cases whose alpha map is a canonical
+source size (the 11th, `v2-small-1376x768`, needs the derived 48px map and
+waits for M3):
+
+| result | cases |
+|---|---|
+| byte-identical inside the watermark region | 7 |
+| within ±1, differing on 0.13–0.19% of channels | 3 (`v1-small-800x600`, `v2-large-2752x1536-hard`, `v2-large-2752x1536-q90`) |
+| byte-exact outside the region | 10 of 10 |
+
+That distribution is the point. A wrong rounding law is a *systematic*
+error: half-up instead of half-to-even would shift every exact tie in the
+same direction and show up as a large, structured fraction of channels off
+by one, not as 0.13% of them. Seven crops reproducing the binary bit for
+bit is not something an incorrect law survives. An independent review run
+reached the same conclusion from its own measurement.
+
+**Disposition**: keep half-to-even; the dump stays the convenient
+statement of the law and the golden images stay the authority.
+
+- `src/quantize.ts` implements clamp + half-to-even and cites this entry.
+- Should the two ever disagree — a golden pixel the port misses by exactly
+  1 with no other explanation — the golden image wins and the dump is
+  re-measured against the binary's OpenCV, not the other way round.
+- Anything else measured through opencv-python inherits this caveat. M3's
+  operator dumps (grayscale, Sobel, NCC, resize) are measured the same way
+  and are validated the same way: by the detection scores the binary
+  itself logged, not by the dump alone.
