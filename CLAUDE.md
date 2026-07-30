@@ -26,7 +26,7 @@ below carry the required semantics.
 | Resource | How to get it | Role |
 |---|---|---|
 | Upstream C++ source | `git clone https://github.com/allenk/GeminiWatermarkTool` at tag `v0.3.2` (commit `7c6a99f`) | Line-level porting reference. The module plan below names the exact upstream function each module ports. |
-| Reference kit | Generated locally from the upstream release binary; location via `GWT_REFERENCE_DIR` env var. Generation scripts will be committed under `tools/reference/`. | Golden outputs + `manifest.json` with per-stage detection scores, for local pixel-level equivalence runs |
+| Reference kit | Generation scripts live in `tools/reference/` (see its README); regenerate the kit locally from the upstream release binary into `GWT_REFERENCE_DIR`. | Golden outputs + `manifest.json` with per-stage detection scores, for local pixel-level equivalence runs |
 | Committed fixtures | `test/data/fixtures.json` (in repo) | Geometry expectations (dims → variant/margin/logo/position) validated against the reference binary |
 
 ## Architecture and module plan
