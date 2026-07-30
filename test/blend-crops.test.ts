@@ -4,9 +4,9 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { getSourceAlphaMap } from '../src/alpha-maps.js';
+import { effectiveAlphaMap } from '../src/effective-alpha.js';
 import { addWatermarkRegion, removeWatermarkRegion } from '../src/blend.js';
-import type { ImageBuffer, WatermarkSize } from '../src/types.js';
+import type { ImageBuffer } from '../src/types.js';
 import type { CaseMeta } from './helpers/reconstruct.js';
 import { decodePng } from './helpers/png.js';
 import manifest from './data/manifest.json';
@@ -25,14 +25,6 @@ import manifest from './data/manifest.json';
  * should have touched those pixels at all.
  */
 const CASES_DIR = join(import.meta.dirname, 'data', 'cases');
-
-/**
- * Cases whose alpha map is not one of the four calibrated source sizes.
- * `effectiveAlphaMap` (M3) derives those from the 96px sources; until it
- * exists they are counted, not silently dropped, and the count below must
- * fall to zero when M3 lands.
- */
-const DERIVED_ALPHA_SIZES = new Set([42, 48, 53, 101]);
 
 const readMeta = (name: string): CaseMeta =>
   JSON.parse(readFileSync(join(CASES_DIR, name, 'meta.json'), 'utf8')) as CaseMeta;
@@ -61,8 +53,6 @@ function requireRole(
   }
   return entry;
 }
-
-const sizeOf = (logoSize: number): WatermarkSize => (logoSize === 96 ? 'large' : 'small');
 
 interface Comparison {
   insideMax: number;
@@ -143,12 +133,6 @@ describe('removeWatermarkRegion vs the reference binary (committed crops)', () =
     const blend = meta.blend;
     if (blend === null) throw new Error(`${entry.name}: force_remove case without blend crops`);
 
-    const derived = fixture.variant === 'V2' && DERIVED_ALPHA_SIZES.has(fixture.logo_size);
-    if (derived) {
-      skipped.push(entry.name);
-      it.skip(`${entry.name} — needs the derived ${fixture.logo_size}px alpha map (M3)`, () => {});
-      continue;
-    }
     executed.push(entry.name);
 
     it(`${entry.name} (${fixture.variant} ${fixture.logo_size}px)`, () => {
@@ -161,9 +145,16 @@ describe('removeWatermarkRegion vs the reference binary (committed crops)', () =
       const digest = createHash('sha256').update(watermarked.data).digest('hex');
       expect(digest).toBe(wmRole.decoded_pixel_sha256);
 
-      const alpha = getSourceAlphaMap(fixture.variant, sizeOf(fixture.logo_size));
+      // The template comes from the same resolver the engine uses, so the
+      // derived sizes (48px here) are covered rather than skipped.
+      const { alpha, w, h } = effectiveAlphaMap(
+        fixture.variant,
+        meta.original_size.width,
+        meta.original_size.height,
+      );
+      expect(w, 'resolved template matches the fixture geometry').toBe(fixture.logo_size);
       const region = blend.watermark_region_in_crop;
-      removeWatermarkRegion(watermarked, alpha, fixture.logo_size, fixture.logo_size, {
+      removeWatermarkRegion(watermarked, alpha, w, h, {
         x: region.x,
         y: region.y,
       });
@@ -177,8 +168,10 @@ describe('removeWatermarkRegion vs the reference binary (committed crops)', () =
   it('executed every eligible case except the explicitly skipped ones', () => {
     expect(eligible).toHaveLength(11); // manifest tally: force_remove = 11
     expect(executed.length + skipped.length).toBe(eligible.length);
-    expect(skipped).toEqual(['v2-small-1376x768']);
-    expect(executed).toHaveLength(10);
+    // M3 wired effectiveAlphaMap, so the derived-size case runs too and
+    // nothing is skipped any more (M3.md acceptance).
+    expect(skipped).toEqual([]);
+    expect(executed).toHaveLength(11);
   });
 });
 
@@ -203,9 +196,13 @@ describe('addWatermarkRegion vs the fixtures (add_v1 cases)', () => {
       const wmRole = requireRole(blend.files, 'watermarked', entry.name);
       const watermarked = readCrop(entry.name, wmRole.file);
 
-      const alpha = getSourceAlphaMap(fixture.variant, sizeOf(fixture.logo_size));
+      const { alpha, w, h } = effectiveAlphaMap(
+        fixture.variant,
+        meta.original_size.width,
+        meta.original_size.height,
+      );
       const region = blend.watermark_region_in_crop;
-      addWatermarkRegion(original, alpha, fixture.logo_size, fixture.logo_size, {
+      addWatermarkRegion(original, alpha, w, h, {
         x: region.x,
         y: region.y,
       });
