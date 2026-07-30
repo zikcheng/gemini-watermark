@@ -25,8 +25,10 @@
  * the downstream error budget.
  *
  * These are the four *source* calibration maps only. Every other logo size
- * (the 48px half-scale class, the 42/53/101px classes) is derived from the
- * 96px sources at runtime — see `effectiveAlphaMap`.
+ * (the 48px half-scale class, the 42/53/101px classes) is resampled from
+ * the 96px sources at runtime, inside the detector. That resolution step
+ * is not part of the public API, so this note describes it rather than
+ * naming a symbol a consumer of the published types cannot import.
  */
 import type { WatermarkSize, WatermarkVariant } from './types.js';
 

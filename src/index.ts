@@ -4,12 +4,25 @@
  * TypeScript port of GeminiWatermarkTool
  * (https://github.com/allenk/GeminiWatermarkTool),
  * Copyright (c) 2025 Allen Kuo (allenk), MIT License.
+ *
+ * This file *is* the public surface: `docs/api-contract.md` says what each
+ * export promises, and nothing outside this list is API. The port's
+ * internals — the three rounding laws, the OpenCV-compatible image
+ * primitives, the resampling kernels, alpha-size resolution — stay
+ * unexported on purpose. They exist to match one specific OpenCV build,
+ * and publishing them would turn compatibility decisions into promises.
  */
 
 export type {
+  DetectOptions,
   DetectionResult,
+  DetectionScores,
   ImageBuffer,
   Point,
+  ProcessOptions,
+  ProcessResult,
+  ProcessStatus,
+  Rect,
   WatermarkPosition,
   WatermarkSize,
   WatermarkVariant,
@@ -19,9 +32,14 @@ export { getSourceAlphaMap } from './alpha-maps.js';
 
 export { addWatermarkRegion, removeWatermarkRegion } from './blend.js';
 
+export { passesThreshold } from './gating.js';
+
 export {
   getWatermarkConfig,
   getWatermarkSize,
   getWatermarkTopLeft,
-  roundHalfAwayFromZero,
 } from './position.js';
+
+// `detectWatermark` and `processImage` arrive in M4 commits 2 and 3. Their
+// types are exported above already, so the contract is complete — and
+// testable — before any detection code exists.
