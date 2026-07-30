@@ -32,6 +32,8 @@ export { getSourceAlphaMap } from './alpha-maps.js';
 
 export { addWatermarkRegion, removeWatermarkRegion } from './blend.js';
 
+export { detectWatermark } from './detect.js';
+
 export { passesThreshold } from './gating.js';
 
 export {

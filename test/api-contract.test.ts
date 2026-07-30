@@ -39,6 +39,7 @@ describe('public exports', () => {
     // only. The type-level assertions below cover the rest.
     expect(Object.keys(api).sort()).toEqual([
       'addWatermarkRegion',
+      'detectWatermark',
       'getSourceAlphaMap',
       'getWatermarkConfig',
       'getWatermarkSize',
@@ -91,19 +92,15 @@ describe('exported function signatures', () => {
     expectTypeOf(api.getSourceAlphaMap).returns.toEqualTypeOf<Float32Array>();
   });
 
-  it('passesThreshold compares with >=, so equality passes', () => {
+  it('passesThreshold and detectWatermark have the contracted signatures', () => {
+    // Behaviour — the `>=` boundary, negative confidences — is covered in
+    // test/gating.test.ts alongside the other gate predicates. This file
+    // only guards the surface.
     expectTypeOf(api.passesThreshold).toEqualTypeOf<
       (confidence: number, threshold: number) => boolean
     >();
-    // The boundary is the whole point of exporting it: a caller re-applying
-    // the gate must land on the same side as the pipeline did.
-    expect(api.passesThreshold(0.25, 0.25)).toBe(true);
-    expect(api.passesThreshold(0.2499999, 0.25)).toBe(false);
-    expect(api.passesThreshold(0.2500001, 0.25)).toBe(true);
-    // Circuit-broken confidences are unclamped and can be negative; the
-    // comparison must stay ordinary rather than special-casing them.
-    expect(api.passesThreshold(-0.087, 0.25)).toBe(false);
-    expect(api.passesThreshold(-0.087, -0.1)).toBe(true);
+    expectTypeOf(api.detectWatermark).parameter(0).toEqualTypeOf<ImageBuffer>();
+    expectTypeOf(api.detectWatermark).returns.toEqualTypeOf<DetectionResult>();
   });
 });
 
