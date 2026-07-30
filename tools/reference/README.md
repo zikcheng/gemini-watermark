@@ -186,8 +186,29 @@ Inputs are widened to doubles in the JSON deliberately: `255.4` is not
 representable in float32, and a JavaScript `255.4` literal is a third
 value again, so a consumer must test the number cv2 actually saw.
 
-M3 fills in the remaining operators (grayscale, Sobel, meanStdDev, NCC,
-resize) as `.bin` + `.json` pairs alongside it.
+The five detector primitives are dumped alongside it as `.bin` + `.json`
+pairs: `bgr2gray`, `sobel-magnitude`, `mean-stddev`,
+`match-template-ccoeff-normed` and `resize-alpha`.
+
+Two conventions are worth knowing before reading one:
+
+- Fields named `output`, `result` or `input` hold **array keys**, not
+  filenames. Resolve them through the same JSON's `arrays` block, which
+  carries `{file, dtype, shape}` — never build a `.bin` path by hand.
+- cv2 is BGR and this port is RGB. Each dump records the channel order of
+  what cv2 was handed; the grayscale coefficients attach to colours rather
+  than positions, so the port applies them to its R/G/B and gets the same
+  byte.
+
+The degenerate `match-template` cases are there on purpose: OpenCV does
+not return NaN when a variance is zero, and what it does return is
+asymmetric — a constant *template* scores 1, a flat *search region* under
+a varying template scores 0. Those numbers are the calibration for the
+port's denominator guard, and they were measured, not reasoned out.
+
+`dump_imageops.py` removes files a dump wrote on an earlier run but no
+longer produces, so a renamed case cannot leave an orphan behind. Only the
+dump's own files are touched, which keeps `--only` safe.
 
 ## Exit codes
 

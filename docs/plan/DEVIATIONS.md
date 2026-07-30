@@ -248,3 +248,49 @@ statement of the law and the golden images stay the authority.
   operator dumps (grayscale, Sobel, NCC, resize) are measured the same way
   and are validated the same way: by the detection scores the binary
   itself logged, not by the dump alone.
+
+---
+
+## D6 — the NCC zero-variance guard is equivalent only on the detector's operand domain
+
+**Milestone**: M3 commit 3 · recorded 2026-07-31
+
+**Symptom**: `matchTemplateCcoeffNormed` treats a variance as degenerate
+only when it is **exactly** zero. OpenCV's own criterion is **relative** —
+it compares the variance against the magnitude of the values involved — so
+the two rules are not the same rule. They agree on all five degenerate
+cases in the dump, which is what the port is tested against, but that
+agreement is a property of the inputs, not an identity.
+
+**Evidence**: an adversarial input separates them. Give cv2 an image and
+template that differ by one ulp and it declares the pair degenerate while
+this implementation computes an ordinary correlation — a review
+experiment saw 8 of 36 placements diverge in one construction and 36 of 36
+in another. So the divergence is real and reachable in principle.
+
+It is not reachable from the detector's operands. Every value entering
+stage 1 or stage 2 comes from `uint8 / 255`, so the smallest non-zero gap
+between two distinct samples is `1/255 ≈ 3.9e-3`, and the smallest
+non-zero region variance is bounded near `(1/255)² / m`. The dump's own
+near-degenerate case lands at `9.4e-3`, some ten orders of magnitude above
+the ulp-scale band where the two criteria differ. Below that band the
+arithmetic is exact rather than merely close: `regionEnergy` is a sum of
+squares, so it has no cancellation, and for a genuinely flat float32
+region the float64 mean rounds back to the sample value exactly (a sum of
+up to 2^29 float32 values still fits a 53-bit significand), making the
+energy exactly `0`. Verified on ordinary values, on `1/255`, and on a
+denormal.
+
+**Disposition**: keep the exact-zero test; it reproduces all five dump
+cases and is exact on the reachable domain.
+
+- `src/imageops.ts` explains the reasoning at the guard and points here.
+- The limit is the **input domain**, not the operator. If the port ever
+  accepts arbitrary float images — externally supplied gradient maps, a
+  future guided-search mode feeding synthetic templates — this
+  equivalence must be re-derived rather than assumed, because such inputs
+  can sit in the band where cv2 calls a pair degenerate and this does not.
+- A related, smaller note: an epsilon guard would not fix that case. It
+  would leave the dump's 9.4e-3 placements untouched and merely swap one
+  arbitrary boundary for another; the fix, should it ever be needed, is
+  cv2's relative criterion, measured.

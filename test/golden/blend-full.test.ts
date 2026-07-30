@@ -4,9 +4,9 @@ import { join } from 'node:path';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { getSourceAlphaMap } from '../../src/alpha-maps.js';
+import { effectiveAlphaMap } from '../../src/effective-alpha.js';
 import { addWatermarkRegion, removeWatermarkRegion } from '../../src/blend.js';
-import type { ImageBuffer, WatermarkSize } from '../../src/types.js';
+import type { ImageBuffer } from '../../src/types.js';
 import { requireReferenceDir } from '../helpers/golden.js';
 import { decodePng, encodePng } from '../helpers/png.js';
 import manifest from '../data/manifest.json';
@@ -31,8 +31,6 @@ type Case = {
 };
 const cases = manifest.cases as Case[];
 
-const DERIVED_ALPHA_SIZES = new Set([42, 48, 53, 101]);
-const sizeOf = (logoSize: number): WatermarkSize => (logoSize === 96 ? 'large' : 'small');
 const readPng = (path: string): ImageBuffer => decodePng(new Uint8Array(readFileSync(path)));
 
 function compare(
@@ -89,19 +87,15 @@ describe('removeWatermarkRegion on full images', () => {
       it.skip(`${entry.name} — JPEG input, covered by the crop test`, () => {});
       continue;
     }
-    if (fixture.variant === 'V2' && DERIVED_ALPHA_SIZES.has(fixture.logo_size)) {
-      skipped.push([entry.name, `derived ${fixture.logo_size}px alpha`]);
-      it.skip(`${entry.name} — needs the derived alpha map (M3)`, () => {});
-      continue;
-    }
     executed.push(entry.name);
 
     it(`${entry.name}`, () => {
       const image = readPng(join(kit, 'fixtures', 'watermarked', `${entry.name}.png`));
       const golden = readPng(join(kit, 'golden', 'force', `${entry.name}.png`));
 
-      const alpha = getSourceAlphaMap(fixture.variant, sizeOf(fixture.logo_size));
-      removeWatermarkRegion(image, alpha, fixture.logo_size, fixture.logo_size, fixture.position);
+      const { alpha, w, h } = effectiveAlphaMap(fixture.variant, image.width, image.height);
+      expect(w, 'resolved template matches the fixture geometry').toBe(fixture.logo_size);
+      removeWatermarkRegion(image, alpha, w, h, fixture.position);
 
       const { insideMax, outsideDiffering } = compare(image, golden, {
         ...fixture.position,
@@ -115,10 +109,10 @@ describe('removeWatermarkRegion on full images', () => {
   it('accounts for every eligible case', () => {
     expect(eligible).toHaveLength(11);
     expect(executed.length + skipped.length).toBe(11);
-    expect(skipped.map(([n]) => n).sort()).toEqual([
-      'v2-large-2752x1536-q90',
-      'v2-small-1376x768',
-    ]);
+    // Only the JPEG case remains: the port has no JPEG decoder by design,
+    // and its crop (cut from cv2-decoded pixels) covers it in CI. The
+    // derived-size case now runs, M3 having wired effectiveAlphaMap.
+    expect(skipped.map(([n]) => n)).toEqual(['v2-large-2752x1536-q90']);
   });
 });
 
@@ -132,8 +126,8 @@ describe('addWatermarkRegion on full images', () => {
 
     const image = readPng(join(kit, 'fixtures', 'originals', `${name}.png`));
     const expected = readPng(join(kit, 'fixtures', 'watermarked', `${name}.png`));
-    const alpha = getSourceAlphaMap(fixture.variant, sizeOf(fixture.logo_size));
-    addWatermarkRegion(image, alpha, fixture.logo_size, fixture.logo_size, fixture.position);
+    const { alpha, w, h } = effectiveAlphaMap(fixture.variant, image.width, image.height);
+    addWatermarkRegion(image, alpha, w, h, fixture.position);
 
     const { insideMax, outsideDiffering } = compare(image, expected, {
       ...fixture.position,
@@ -172,11 +166,6 @@ describe('add V2 round trip through the reference binary (TS extension)', () => 
   for (const entry of addV2) {
     const fixture = entry.fixture;
     if (fixture === null) continue;
-    if (DERIVED_ALPHA_SIZES.has(fixture.logo_size)) {
-      skipped.push(entry.name);
-      it.skip(`${entry.name} — needs the derived alpha map (M3)`, () => {});
-      continue;
-    }
     executed.push(entry.name);
 
     it(`${entry.name}: C++ remove recovers the original`, () => {
@@ -187,14 +176,8 @@ describe('add V2 round trip through the reference binary (TS extension)', () => 
         height: original.height,
         channels: 3,
       };
-      const alpha = getSourceAlphaMap('V2', sizeOf(fixture.logo_size));
-      addWatermarkRegion(
-        composited,
-        alpha,
-        fixture.logo_size,
-        fixture.logo_size,
-        fixture.position,
-      );
+      const { alpha, w, h } = effectiveAlphaMap('V2', original.width, original.height);
+      addWatermarkRegion(composited, alpha, w, h, fixture.position);
 
       const added = join(OUT_DIR, `${entry.name}-added.png`);
       const restored = join(OUT_DIR, `${entry.name}-restored.png`);
@@ -215,7 +198,7 @@ describe('add V2 round trip through the reference binary (TS extension)', () => 
   it('accounts for every add_v2_ext case', () => {
     expect(addV2).toHaveLength(8);
     expect(executed.length + skipped.length).toBe(8);
-    expect(skipped).toEqual(['v2-small-1376x768']);
-    expect(executed).toHaveLength(7);
+    expect(skipped).toEqual([]);
+    expect(executed).toHaveLength(8);
   });
 });

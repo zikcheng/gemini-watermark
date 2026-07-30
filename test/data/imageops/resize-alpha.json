@@ -1,0 +1,78 @@
+{
+  "format_version": 1,
+  "name": "resize-alpha",
+  "cv2_version": "5.0.0",
+  "command": "python3 tools/reference/dump_imageops.py --only resize-alpha",
+  "description": "V2 96px alpha source resized to the derived logo sizes. The kernel choice follows create_interpolated_alpha: linear when upscaling, area otherwise.",
+  "operation": "cv2.resize(src, (n, n), 0, 0, interpolation=...)",
+  "source": {
+    "kind": "alpha_map",
+    "variant": "V2",
+    "size": "large",
+    "array": "v2-96-alpha"
+  },
+  "outputs": [
+    {
+      "size": 42,
+      "interpolation": "INTER_AREA",
+      "output": "v2-96-to-42"
+    },
+    {
+      "size": 48,
+      "interpolation": "INTER_AREA",
+      "output": "v2-96-to-48"
+    },
+    {
+      "size": 53,
+      "interpolation": "INTER_AREA",
+      "output": "v2-96-to-53"
+    },
+    {
+      "size": 101,
+      "interpolation": "INTER_LINEAR",
+      "output": "v2-96-to-101"
+    }
+  ],
+  "arrays": {
+    "v2-96-alpha": {
+      "file": "resize-alpha-v2-96-alpha.bin",
+      "dtype": "float32",
+      "shape": [
+        96,
+        96
+      ]
+    },
+    "v2-96-to-42": {
+      "file": "resize-alpha-v2-96-to-42.bin",
+      "dtype": "float32",
+      "shape": [
+        42,
+        42
+      ]
+    },
+    "v2-96-to-48": {
+      "file": "resize-alpha-v2-96-to-48.bin",
+      "dtype": "float32",
+      "shape": [
+        48,
+        48
+      ]
+    },
+    "v2-96-to-53": {
+      "file": "resize-alpha-v2-96-to-53.bin",
+      "dtype": "float32",
+      "shape": [
+        53,
+        53
+      ]
+    },
+    "v2-96-to-101": {
+      "file": "resize-alpha-v2-96-to-101.bin",
+      "dtype": "float32",
+      "shape": [
+        101,
+        101
+      ]
+    }
+  }
+}

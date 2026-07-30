@@ -161,6 +161,15 @@ export function decodeBase64(input: string): Uint8Array {
 const cache = new Map<string, Uint8Array>();
 
 /**
+ * Edge length of a source map, without decoding it.
+ *
+ * The C++ side reads `base.cols` off a reference it already holds; this is
+ * the equivalent that does not force the caller to materialise a
+ * Float32Array just to learn how big it is. `effectiveAlphaMap` needs
+ * exactly that when deciding whether to resample.
+ */
+
+/**
  * The calibrated alpha map for one profile and size class.
  *
  * Corresponds to `WatermarkEngine::get_alpha_map(size, variant)` combined
@@ -171,6 +180,20 @@ const cache = new Map<string, Uint8Array>();
  * and otherwise mutate these buffers, and the cached bytes must survive
  * that untouched.
  */
+export function getSourceAlphaMapEdge(
+  variant: WatermarkVariant,
+  size: WatermarkSize,
+): number {
+  const source = SOURCES[`${variant}:${size}`];
+  if (source === undefined) {
+    throw new RangeError(`no alpha source map for variant ${variant}, size ${size}`);
+  }
+  if (source.w !== source.h) {
+    throw new RangeError(`alpha source ${variant}:${size} is ${source.w}x${source.h}, not square`);
+  }
+  return source.w;
+}
+
 export function getSourceAlphaMap(
   variant: WatermarkVariant,
   size: WatermarkSize,

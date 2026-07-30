@@ -83,15 +83,23 @@ skip.
 | Position config (V1/V2, canonical inference) | ✅ ported + tested |
 | Alpha maps (baked calibration data) | ✅ ported + tested |
 | Reverse alpha blend (remove / add) | ✅ ported + tested |
-| Three-stage NCC detection | ⏳ |
+| Three-stage NCC detection | ⏳ primitives done, orchestration next |
 | Guided multi-scale detection (snap) | ❌ M7 (not in v0.1.0) |
 | Soft inpaint residual cleanup | ❌ M7 (not in v0.1.0) |
 
-The equivalence infrastructure those modules are tested against is already
-in place: `tools/reference/` regenerates the reference kit from the pinned
+Detection's building blocks are in place ahead of the detector itself:
+grayscale, Sobel magnitude, mean/standard deviation, normalized
+cross-correlation and the two resampling kernels that derive the
+non-canonical alpha sizes. Each is checked against measured output of the
+pinned OpenCV rather than against a textbook formula. What remains for
+that row is the orchestration — the three weighted stages, the circuit
+breaker, the V2→V1 fallback and the position snap.
+
+The equivalence infrastructure all of it is tested against is already in
+place: `tools/reference/` regenerates the reference kit from the pinned
 C++ binary and validates it, and `test/data/` carries the committed oracle
 — geometry fixtures, the detection/score manifest, per-case image patches
-for CI, and the cv2 quantization dump.
+for CI, and the cv2 operator dumps.
 
 ## License & attribution
 
