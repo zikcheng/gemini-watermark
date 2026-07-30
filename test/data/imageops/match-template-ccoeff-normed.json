@@ -1,0 +1,253 @@
+{
+  "format_version": 1,
+  "name": "match-template-ccoeff-normed",
+  "cv2_version": "5.0.0",
+  "command": "python3 tools/reference/dump_imageops.py --only match-template-ccoeff-normed",
+  "description": "TM_CCOEFF_NORMED result matrices. Result size is (H-h+1) x (W-w+1). The degenerate cases pin what OpenCV returns when a variance is zero \u2014 the port must reproduce these numbers, not invent a NaN guard.",
+  "operation": "cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)",
+  "cases": [
+    {
+      "label": "v2-large-2752x1536",
+      "note": "real grayscale crop searched with its profile's alpha template",
+      "source": {
+        "kind": "case_file",
+        "path": "v2-large-2752x1536/blend-watermarked.png",
+        "template": "bg_b_96.png"
+      },
+      "image_shape": [
+        112,
+        112
+      ],
+      "template_shape": [
+        96,
+        96
+      ],
+      "result": "v2-large-2752x1536-result",
+      "min": 0.6214582324028015,
+      "max": 0.996478796005249,
+      "nonfinite_count": 0
+    },
+    {
+      "label": "v2-small-1024x572",
+      "note": "real grayscale crop searched with its profile's alpha template",
+      "source": {
+        "kind": "case_file",
+        "path": "v2-small-1024x572/blend-watermarked.png",
+        "template": "bg_b_36.png"
+      },
+      "image_shape": [
+        52,
+        52
+      ],
+      "template_shape": [
+        36,
+        36
+      ],
+      "result": "v2-small-1024x572-result",
+      "min": -0.19384683668613434,
+      "max": 0.34275615215301514,
+      "nonfinite_count": 0
+    },
+    {
+      "label": "flat-image-varied-template",
+      "note": "zero-variance search region, varying template",
+      "source": {
+        "kind": "array"
+      },
+      "image_shape": [
+        12,
+        12
+      ],
+      "template_shape": [
+        4,
+        4
+      ],
+      "result": "flat-image-varied-template-result",
+      "min": 0.0,
+      "max": 0.0,
+      "nonfinite_count": 0
+    },
+    {
+      "label": "varied-image-constant-template",
+      "note": "varying search region, zero-variance template",
+      "source": {
+        "kind": "array"
+      },
+      "image_shape": [
+        12,
+        12
+      ],
+      "template_shape": [
+        4,
+        4
+      ],
+      "result": "varied-image-constant-template-result",
+      "min": 1.0,
+      "max": 1.0,
+      "nonfinite_count": 0
+    },
+    {
+      "label": "both-constant",
+      "note": "both zero-variance",
+      "source": {
+        "kind": "array"
+      },
+      "image_shape": [
+        12,
+        12
+      ],
+      "template_shape": [
+        4,
+        4
+      ],
+      "result": "both-constant-result",
+      "min": 1.0,
+      "max": 1.0,
+      "nonfinite_count": 0
+    },
+    {
+      "label": "single-pixel-perturbation-constant-template",
+      "note": "one pixel away from flat, against a constant template",
+      "source": {
+        "kind": "array"
+      },
+      "image_shape": [
+        12,
+        12
+      ],
+      "template_shape": [
+        4,
+        4
+      ],
+      "result": "single-pixel-perturbation-constant-template-result",
+      "min": 1.0,
+      "max": 1.0,
+      "nonfinite_count": 0
+    },
+    {
+      "label": "single-pixel-perturbation-varied-template",
+      "note": "near-zero image variance against a varying template",
+      "source": {
+        "kind": "array"
+      },
+      "image_shape": [
+        12,
+        12
+      ],
+      "template_shape": [
+        4,
+        4
+      ],
+      "result": "single-pixel-perturbation-varied-template-result",
+      "min": -0.42008402943611145,
+      "max": 0.42008382081985474,
+      "nonfinite_count": 0
+    }
+  ],
+  "arrays": {
+    "v2-large-2752x1536-gray-f32": {
+      "file": "match-template-ccoeff-normed-v2-large-2752x1536-gray-f32.bin",
+      "dtype": "float32",
+      "shape": [
+        112,
+        112
+      ]
+    },
+    "v2-large-2752x1536-result": {
+      "file": "match-template-ccoeff-normed-v2-large-2752x1536-result.bin",
+      "dtype": "float32",
+      "shape": [
+        17,
+        17
+      ]
+    },
+    "v2-small-1024x572-gray-f32": {
+      "file": "match-template-ccoeff-normed-v2-small-1024x572-gray-f32.bin",
+      "dtype": "float32",
+      "shape": [
+        52,
+        52
+      ]
+    },
+    "v2-small-1024x572-result": {
+      "file": "match-template-ccoeff-normed-v2-small-1024x572-result.bin",
+      "dtype": "float32",
+      "shape": [
+        17,
+        17
+      ]
+    },
+    "degenerate-flat-image": {
+      "file": "match-template-ccoeff-normed-degenerate-flat-image.bin",
+      "dtype": "float32",
+      "shape": [
+        12,
+        12
+      ]
+    },
+    "degenerate-varied-template": {
+      "file": "match-template-ccoeff-normed-degenerate-varied-template.bin",
+      "dtype": "float32",
+      "shape": [
+        4,
+        4
+      ]
+    },
+    "degenerate-constant-template": {
+      "file": "match-template-ccoeff-normed-degenerate-constant-template.bin",
+      "dtype": "float32",
+      "shape": [
+        4,
+        4
+      ]
+    },
+    "flat-image-varied-template-result": {
+      "file": "match-template-ccoeff-normed-flat-image-varied-template-result.bin",
+      "dtype": "float32",
+      "shape": [
+        9,
+        9
+      ]
+    },
+    "varied-image-constant-template-result": {
+      "file": "match-template-ccoeff-normed-varied-image-constant-template-result.bin",
+      "dtype": "float32",
+      "shape": [
+        9,
+        9
+      ]
+    },
+    "both-constant-result": {
+      "file": "match-template-ccoeff-normed-both-constant-result.bin",
+      "dtype": "float32",
+      "shape": [
+        9,
+        9
+      ]
+    },
+    "degenerate-perturbed-image": {
+      "file": "match-template-ccoeff-normed-degenerate-perturbed-image.bin",
+      "dtype": "float32",
+      "shape": [
+        12,
+        12
+      ]
+    },
+    "single-pixel-perturbation-constant-template-result": {
+      "file": "match-template-ccoeff-normed-single-pixel-perturbation-constant-template-result.bin",
+      "dtype": "float32",
+      "shape": [
+        9,
+        9
+      ]
+    },
+    "single-pixel-perturbation-varied-template-result": {
+      "file": "match-template-ccoeff-normed-single-pixel-perturbation-varied-template-result.bin",
+      "dtype": "float32",
+      "shape": [
+        9,
+        9
+      ]
+    }
+  }
+}
