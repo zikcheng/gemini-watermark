@@ -11,8 +11,12 @@ Outputs (env):  GWT_REFERENCE_DIR/alpha/{bg_48,bg_96,bg_b_36,bg_b_96}.png
 """
 import argparse
 import re
+import sys
+from pathlib import Path
 
-from _common import die, reference_dir, require_file, upstream_dir
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import (die, require_file, resolve_env_dirs,  # noqa: E402
+                     verify_upstream_checkout)
 
 ARRAYS = {
     "bg_48_png": "bg_48.png",      # V1 small (48x48)
@@ -25,12 +29,15 @@ ARRAYS = {
 def main() -> None:
     argparse.ArgumentParser(description=__doc__).parse_args()
 
+    env = resolve_env_dirs("GWT_UPSTREAM_DIR", "GWT_REFERENCE_DIR")
+    verify_upstream_checkout(env["GWT_UPSTREAM_DIR"])
+
     hpp = require_file(
-        upstream_dir() / "assets" / "embedded_assets.hpp",
+        env["GWT_UPSTREAM_DIR"] / "assets" / "embedded_assets.hpp",
         "embedded_assets.hpp",
         "GWT_UPSTREAM_DIR must point at the GeminiWatermarkTool checkout root.",
     )
-    out = reference_dir() / "alpha"
+    out = env["GWT_REFERENCE_DIR"] / "alpha"
     out.mkdir(parents=True, exist_ok=True)
 
     text = hpp.read_text()

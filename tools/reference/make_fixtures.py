@@ -23,12 +23,16 @@ Outputs (env):  GWT_REFERENCE_DIR/fixtures/{originals,watermarked}/*.png
 """
 import argparse
 import json
+import math
+import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-from _common import reference_dir, require_file, upstream_dir
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import (require_file, resolve_env_dirs,  # noqa: E402
+                     verify_upstream_checkout)
 
 LOGO_VALUE = 255.0
 
@@ -47,14 +51,18 @@ def half_scale(alpha: np.ndarray) -> np.ndarray:
     return alpha.reshape(h // 2, 2, w // 2, 2).mean(axis=(1, 3))
 
 
-def v2_small_config(W: int, H: int):
-    """Port of v2_small_config_from_dims() — canonical-source inference.
+def round_half_away(v: float) -> int:
+    """C++ std::round semantics: ties go away from zero.
 
-    NOTE: C++ uses std::round (half away from zero); Python's round() is
-    banker's rounding. No dimension in the fixture set below lands on a .5
-    boundary, so the two agree here — but this divergence is real for
-    arbitrary dimensions (CLAUDE.md porting rule 1).
+    Python's built-in round() is banker's rounding, which disagrees on .5
+    boundaries — CLAUDE.md porting rule 1. No dimension in the fixture set
+    below lands on a tie today, but the generator must not depend on that.
     """
+    return int(math.floor(v + 0.5)) if v >= 0 else int(math.ceil(v - 0.5))
+
+
+def v2_small_config(W: int, H: int):
+    """Port of v2_small_config_from_dims() — canonical-source inference."""
     long_side, short_side = max(W, H), min(W, H)
     if long_side > 1100:
         doubled = 2.0 * long_side
@@ -66,8 +74,8 @@ def v2_small_config(W: int, H: int):
     else:
         source = 2848.0
     scale = long_side / source
-    margin = round(192.0 * scale)
-    ideal = round(96.0 * scale)
+    margin = round_half_away(192.0 * scale)
+    ideal = round_half_away(96.0 * scale)
     logo = 36 if ideal <= 40 else ideal
     return margin, logo
 
@@ -101,10 +109,18 @@ def apply_watermark(rgb: np.ndarray, alpha: np.ndarray, x: int, y: int) -> np.nd
 
 
 def main() -> None:
-    argparse.ArgumentParser(description=__doc__).parse_args()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--fixtures-out", type=Path, default=None,
+        help="write a second copy of fixtures.json here (used to refresh the "
+             "committed test/data/fixtures.json, which must never be hand-edited)")
+    args = parser.parse_args()
 
-    art_dir = upstream_dir() / "artworks"
-    ref = reference_dir()
+    env = resolve_env_dirs("GWT_UPSTREAM_DIR", "GWT_REFERENCE_DIR")
+    upstream, ref = env["GWT_UPSTREAM_DIR"], env["GWT_REFERENCE_DIR"]
+    verify_upstream_checkout(upstream)
+
+    art_dir = upstream / "artworks"
     alpha_dir = ref / "alpha"
     orig_dir = ref / "fixtures/originals"
     wm_dir = ref / "fixtures/watermarked"
@@ -188,7 +204,12 @@ def main() -> None:
             {"name": name, "width": W, "height": H, "content_source": src})
         print(f"{name}: negative (clean)")
 
-    (ref / "fixtures/fixtures.json").write_text(json.dumps(manifest, indent=2))
+    payload = json.dumps(manifest, indent=2)
+    (ref / "fixtures/fixtures.json").write_text(payload)
+    if args.fixtures_out:
+        out_path = args.fixtures_out.expanduser()
+        out_path.write_text(payload)
+        print(f"fixtures.json copy -> {out_path}")
     print(f"\nWrote {len(manifest['fixtures'])} watermarked + "
           f"{len(manifest['negatives'])} clean fixtures")
 

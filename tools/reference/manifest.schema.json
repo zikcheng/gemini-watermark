@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zikcheng/gemini-watermark/tools/reference/manifest.schema.json",
+  "title": "gemini-watermark reference manifest",
+  "description": "Decision- and score-level oracle for the TypeScript port, produced by tools/reference/gen_golden.py from the pinned gwt-mini v0.3.2 binary. Scores parsed directly from the -v log carry exactly 3 decimal places. The one exception is a circuit-breaker detection's confidence, which the log never prints: it is reconstructed as round(spatial*0.5, 4), with error against the binary's internal float bounded by 3e-4 (see docs/plan/DEVIATIONS.md D2). Compare all scores with the 2e-3 budget from PLAN.md, never with toBeCloseTo. Decisions, geometry and exit codes are exact.",
+  "type": "object",
+  "required": ["reference_binary", "toolchain", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "reference_binary": {
+      "type": "string",
+      "description": "Human-readable identification of the binary; the machine-checkable identity lives in toolchain."
+    },
+    "toolchain": { "$ref": "#/$defs/toolchain" },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" }
+      }
+    },
+    "rect": {
+      "type": "object",
+      "required": ["x", "y", "w", "h"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "w": { "type": "integer", "minimum": 1 },
+        "h": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "description": "Identity of everything that shaped the data. Any change here invalidates the oracle.",
+      "required": ["binary_sha256", "binary_version", "upstream_commit", "cv2_version"],
+      "additionalProperties": false,
+      "properties": {
+        "binary_sha256": { "$ref": "#/$defs/sha256" },
+        "binary_version": { "type": "string" },
+        "upstream_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Full HEAD sha of the upstream C++ checkout, measured (the pin is a prefix)."
+        },
+        "cv2_version": { "type": "string" }
+      }
+    },
+    "score": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1,
+      "description": "TM_CCOEFF_NORMED correlation or a value derived from one; negative values are normal on clean images."
+    },
+    "detection": {
+      "type": "object",
+      "description": "One detect_one_variant() invocation, in log order. A default run records the V2 gate attempt, then (on the V2->V1 fallback) the V1 gate attempt, and after a passing gate the re-detection remove_watermark() performs internally for the position snap.",
+      "required": ["variant", "spatial", "confidence", "circuit_breaker", "detected"],
+      "additionalProperties": false,
+      "properties": {
+        "variant": { "enum": ["V1", "V2"] },
+        "spatial": { "$ref": "#/$defs/score" },
+        "gradient": { "$ref": "#/$defs/score" },
+        "variance": { "$ref": "#/$defs/score" },
+        "confidence": { "$ref": "#/$defs/score" },
+        "circuit_breaker": {
+          "type": "boolean",
+          "description": "True when spatial < 0.25 rejected the image before the gradient/variance stages ran. The breaker log line prints only spatial, so confidence here is reconstructed as round(spatial*0.5, 4) rather than read from the binary; upstream does not clamp it, so it can be negative."
+        },
+        "detected": {
+          "type": "boolean",
+          "description": "The internal 0.35 label. Informational only -- the CLI gate is the separate detection threshold (default 0.25)."
+        },
+        "snap_region": { "$ref": "#/$defs/rect" },
+        "removal_position": { "$ref": "#/$defs/point" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "circuit_breaker": { "const": false } }, "required": ["circuit_breaker"] },
+          "then": { "required": ["gradient", "variance"] }
+        },
+        {
+          "if": { "properties": { "circuit_breaker": { "const": true } }, "required": ["circuit_breaker"] },
+          "then": {
+            "not": { "anyOf": [{ "required": ["gradient"] }, { "required": ["variance"] }] }
+          }
+        }
+      ]
+    },
+    "run": {
+      "type": "object",
+      "description": "One invocation of the reference binary.",
+      "required": ["argv", "exit_code", "output_written", "output_decoded_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "argv": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Arguments after the binary path, with <in>/<out> placeholders -- the manifest is committed and must carry no machine-local paths."
+        },
+        "exit_code": {
+          "type": "integer",
+          "enum": [0, 1, 2],
+          "description": "cli_app.cpp run(): 0 processed, 1 single-file skip, 2 real failure."
+        },
+        "detections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/detection" }
+        },
+        "removal_position": {
+          "$ref": "#/$defs/point",
+          "description": "Parsed from the 'Removing watermark at (x, y)' debug line: the post-snap position actually removed at."
+        },
+        "alpha_map": {
+          "type": "object",
+          "required": ["width", "height"],
+          "additionalProperties": false,
+          "properties": {
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 }
+          },
+          "description": "Template size actually used. On forced_size runs this deliberately disagrees with fixture.logo_size -- that is the upstream quirk, recorded as-is."
+        },
+        "removal_size": { "enum": ["Small", "Large"] },
+        "removal_variant": { "enum": ["V1", "V2"] },
+        "output_written": { "type": "boolean" },
+        "output_decoded_sha256": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }],
+          "description": "SHA256 over decoded RGB pixels (cv2 IMREAD_COLOR, BGR->RGB, contiguous uint8 HxWx3), not container bytes -- immune to PNG encoder drift (docs/plan/DEVIATIONS.md). Null when no output was written."
+        },
+        "flag": {
+          "enum": ["force-small", "force-large"],
+          "description": "forced_size runs only."
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "required": ["name", "input", "fixture", "eligible_for", "runs", "toolchain"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "input": {
+          "type": "object",
+          "required": ["format", "width", "height", "decoded_pixel_sha256"],
+          "additionalProperties": false,
+          "properties": {
+            "format": { "enum": ["png", "jpg"] },
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 },
+            "decoded_pixel_sha256": {
+              "$ref": "#/$defs/sha256",
+              "description": "Identity of the pixels the port must consume. For the jpg case this is the cv2 decode, which is what the reference binary sees -- the TS side never decodes JPEG."
+            }
+          }
+        },
+        "fixture": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["variant", "margin", "logo_size", "position"],
+              "additionalProperties": false,
+              "properties": {
+                "variant": { "enum": ["V1", "V2"] },
+                "margin": { "type": "integer", "minimum": 0 },
+                "logo_size": { "type": "integer", "minimum": 1 },
+                "position": { "$ref": "#/$defs/point" }
+              }
+            },
+            { "type": "null", "description": "Negatives: clean images with no watermark." }
+          ]
+        },
+        "eligible_for": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["force_remove", "add_v1", "add_v2_ext", "detection", "default_e2e", "forced_size"]
+          },
+          "description": "Which downstream suites consume this case. Derived from measured run results by gen_golden.py, never hand-assigned; the suites assert executed == eligible - explicitly-skipped."
+        },
+        "runs": {
+          "type": "object",
+          "required": ["default"],
+          "additionalProperties": false,
+          "properties": {
+            "default": { "$ref": "#/$defs/run" },
+            "force": { "$ref": "#/$defs/run" },
+            "forced_size": {
+              "allOf": [{ "$ref": "#/$defs/run" }, { "required": ["flag"] }]
+            }
+          }
+        },
+        "toolchain": { "$ref": "#/$defs/toolchain" }
+      }
+    }
+  }
+}

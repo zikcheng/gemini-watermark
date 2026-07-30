@@ -6,6 +6,10 @@ an explicit command-line argument. There are deliberately **no default
 paths**: a kit generated against an unknown checkout or an unknown binary
 is not an oracle, so a missing variable is a hard error (exit 2) rather
 than a silent fallback to someone's home directory.
+
+The same reasoning pins the toolchain identity: the reference binary's
+SHA256/version and the upstream checkout's commit are verified before any
+data is produced, and recorded in the manifest alongside the data.
 """
 import hashlib
 import os
@@ -29,6 +33,17 @@ REFERENCE_BINARY_SHA256 = (
 REFERENCE_BINARY_VERSION = "0.3.2"
 UPSTREAM_COMMIT = "7c6a99f"
 
+_ENV_SPECS = {
+    "GWT_UPSTREAM_DIR": (
+        f"the upstream GeminiWatermarkTool checkout at commit {UPSTREAM_COMMIT}",
+        "$HOME/GeminiWatermarkTool",
+    ),
+    "GWT_REFERENCE_DIR": (
+        "the reference kit directory (holds bin/, alpha/, fixtures/, golden/)",
+        "$HOME/gwt-reference",
+    ),
+}
+
 
 def die(message: str) -> NoReturn:
     """Print an actionable error and exit 2."""
@@ -36,43 +51,45 @@ def die(message: str) -> NoReturn:
     sys.exit(EXIT_USAGE)
 
 
-def env_dir(var: str, purpose: str, example: str) -> Path:
-    """Resolve a directory from an environment variable, or exit 2.
+def resolve_env_dirs(*names: str) -> dict:
+    """Resolve several env-var directories at once, or exit 2.
 
-    Never falls back to a default location — see the module docstring.
+    Reports **every** problem in one shot rather than one per rerun, so a
+    fresh setup learns the whole story from a single failure. Never falls
+    back to a default location — see the module docstring.
     """
-    raw = os.environ.get(var, "").strip()
-    if not raw:
-        die(
-            f"{var} is not set.\n"
-            f"  {var} must point at {purpose}.\n"
-            f"  Example: export {var}={example}"
-        )
-    path = Path(raw).expanduser()
-    if not path.is_dir():
-        die(
-            f"{var} does not point at a directory: {path}\n"
-            f"  It must point at {purpose}."
-        )
-    return path
+    problems, resolved = [], {}
+    for name in names:
+        purpose, example = _ENV_SPECS[name]
+        raw = os.environ.get(name, "").strip()
+        if not raw:
+            problems.append(
+                f"{name} is not set.\n"
+                f"  {name} must point at {purpose}.\n"
+                f"  Example: export {name}={example}"
+            )
+            continue
+        path = Path(raw).expanduser()
+        if not path.is_dir():
+            problems.append(
+                f"{name} does not point at a directory: {path}\n"
+                f"  It must point at {purpose}."
+            )
+            continue
+        resolved[name] = path
+    if problems:
+        die("\n".join(problems))
+    return resolved
 
 
 def upstream_dir() -> Path:
     """The GeminiWatermarkTool C++ checkout (v0.3.2, commit 7c6a99f)."""
-    return env_dir(
-        "GWT_UPSTREAM_DIR",
-        f"the upstream GeminiWatermarkTool checkout at commit {UPSTREAM_COMMIT}",
-        "$HOME/GeminiWatermarkTool",
-    )
+    return resolve_env_dirs("GWT_UPSTREAM_DIR")["GWT_UPSTREAM_DIR"]
 
 
 def reference_dir() -> Path:
     """The reference kit working directory (binary, alpha, fixtures, golden)."""
-    return env_dir(
-        "GWT_REFERENCE_DIR",
-        "the reference kit directory (holds bin/, alpha/, fixtures/, golden/)",
-        "$HOME/gwt-reference",
-    )
+    return resolve_env_dirs("GWT_REFERENCE_DIR")["GWT_REFERENCE_DIR"]
 
 
 def require_file(path: Path, what: str, hint: str) -> Path:
@@ -88,6 +105,64 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def decoded_pixel_sha256(path: Path) -> str:
+    """SHA256 over decoded RGB pixels, not container bytes.
+
+    Normalization: cv2.imread(IMREAD_COLOR) -> BGR->RGB -> contiguous uint8
+    HxWx3 -> .tobytes(). Two properties make this the right identity for a
+    pixel oracle: it is the exact decode the reference binary sees
+    (process_image() reads via cv::imread(..., IMREAD_COLOR)), and it is
+    immune to PNG encoder drift across Pillow/zlib versions, which changes
+    file bytes without changing a single pixel (docs/plan/DEVIATIONS.md).
+    """
+    import cv2  # local: only the golden/patch scripts need OpenCV
+    import numpy as np
+
+    img = cv2.imread(str(path), cv2.IMREAD_COLOR)
+    if img is None:
+        die(f"could not decode image: {path}")
+    rgb = np.ascontiguousarray(img[:, :, ::-1])
+    return hashlib.sha256(rgb.tobytes()).hexdigest()
+
+
+def cv2_version() -> str:
+    """The cv2 build in use — part of the manifest's toolchain identity."""
+    import cv2
+
+    return cv2.__version__
+
+
+def verify_upstream_checkout(upstream: Path) -> str:
+    """Check the checkout sits on the pinned commit, or exit 2.
+
+    Returns the full HEAD sha so the manifest records a measured value
+    rather than echoing the pin (which is only a prefix).
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(upstream), "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=60,
+        )
+    except OSError as exc:
+        die(f"could not run git in {upstream}: {exc}")
+    if proc.returncode != 0:
+        die(
+            f"{upstream} is not a git checkout "
+            f"(git rev-parse HEAD failed: {proc.stderr.strip()})\n"
+            f"  GWT_UPSTREAM_DIR must point at a GeminiWatermarkTool clone "
+            f"checked out at {UPSTREAM_COMMIT}."
+        )
+    head = proc.stdout.strip()
+    if not head.startswith(UPSTREAM_COMMIT):
+        die(
+            f"upstream checkout is on the wrong commit: {upstream}\n"
+            f"  expected {UPSTREAM_COMMIT}... (v0.3.2)\n"
+            f"  actual   {head}\n"
+            f"  Run: git -C {upstream} checkout {UPSTREAM_COMMIT}"
+        )
+    return head
 
 
 def verify_reference_binary(binary: Path) -> dict:

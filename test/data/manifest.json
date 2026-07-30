@@ -1,0 +1,1739 @@
+{
+  "reference_binary": "gwt-mini v0.3.2 (macOS Universal, release build)",
+  "toolchain": {
+    "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+    "binary_version": "0.3.2",
+    "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+    "cv2_version": "5.0.0"
+  },
+  "cases": [
+    {
+      "name": "v1-small-800x600",
+      "input": {
+        "format": "png",
+        "width": 800,
+        "height": 600,
+        "decoded_pixel_sha256": "1ebb1663c616771580197eee87d035bcae899fb53c550f9d731ac559a8ffb12f"
+      },
+      "fixture": {
+        "variant": "V1",
+        "margin": 32,
+        "logo_size": 48,
+        "position": {
+          "x": 720,
+          "y": 520
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v1",
+        "forced_size"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": -0.174,
+              "circuit_breaker": true,
+              "confidence": -0.087,
+              "detected": false
+            },
+            {
+              "variant": "V1",
+              "spatial": 0.691,
+              "gradient": 0.404,
+              "variance": 0.0,
+              "confidence": 0.691,
+              "circuit_breaker": false,
+              "detected": true
+            },
+            {
+              "variant": "V1",
+              "spatial": 0.691,
+              "gradient": 0.404,
+              "variance": 0.0,
+              "confidence": 0.691,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 720,
+                "y": 520,
+                "w": 48,
+                "h": 48
+              },
+              "removal_position": {
+                "x": 720,
+                "y": 520
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 720,
+            "y": 520
+          },
+          "alpha_map": {
+            "width": 48,
+            "height": 48
+          },
+          "removal_size": "Small",
+          "removal_variant": "V1",
+          "output_written": true,
+          "output_decoded_sha256": "5242be184835eb34220c41e4e4ce0b5582e7fa25496c5fef30ee1dd22ff359a6"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V1",
+              "spatial": 0.691,
+              "gradient": 0.404,
+              "variance": 0.0,
+              "confidence": 0.691,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 720,
+                "y": 520,
+                "w": 48,
+                "h": 48
+              },
+              "removal_position": {
+                "x": 720,
+                "y": 520
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 720,
+            "y": 520
+          },
+          "alpha_map": {
+            "width": 48,
+            "height": 48
+          },
+          "removal_size": "Small",
+          "removal_variant": "V1",
+          "output_written": true,
+          "output_decoded_sha256": "5242be184835eb34220c41e4e4ce0b5582e7fa25496c5fef30ee1dd22ff359a6"
+        },
+        "forced_size": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--legacy",
+            "--force-large",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V1",
+              "spatial": -0.075,
+              "circuit_breaker": true,
+              "confidence": -0.0375,
+              "detected": false,
+              "snap_region": {
+                "x": 720,
+                "y": 520,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 720,
+                "y": 520
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 720,
+            "y": 520
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V1",
+          "output_written": true,
+          "output_decoded_sha256": "74b66218087a691e8c2c41a4df6eed9cb70adee5760537a94f61d3a75df87ef9",
+          "flag": "force-large"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v1-large-1500x1200",
+      "input": {
+        "format": "png",
+        "width": 1500,
+        "height": 1200,
+        "decoded_pixel_sha256": "a51ca0a05415ceaa12b11a4d6a4f38c664ba9c55ff00237587dd5f5f68ce4da1"
+      },
+      "fixture": {
+        "variant": "V1",
+        "margin": 64,
+        "logo_size": 96,
+        "position": {
+          "x": 1340,
+          "y": 1040
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v1"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.0,
+              "circuit_breaker": true,
+              "confidence": 0.0,
+              "detected": false
+            },
+            {
+              "variant": "V1",
+              "spatial": 1.0,
+              "gradient": 1.0,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true
+            },
+            {
+              "variant": "V1",
+              "spatial": 1.0,
+              "gradient": 1.0,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 1340,
+                "y": 1040,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 1340,
+                "y": 1040
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 1340,
+            "y": 1040
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V1",
+          "output_written": true,
+          "output_decoded_sha256": "316add6cd181ca0b6fb853253f5a6d2084f2f7e178d327d66de989a03bc754eb"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V1",
+              "spatial": 1.0,
+              "gradient": 1.0,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 1340,
+                "y": 1040,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 1340,
+                "y": 1040
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 1340,
+            "y": 1040
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V1",
+          "output_written": true,
+          "output_decoded_sha256": "316add6cd181ca0b6fb853253f5a6d2084f2f7e178d327d66de989a03bc754eb"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v2-large-2752x1536",
+      "input": {
+        "format": "png",
+        "width": 2752,
+        "height": 1536,
+        "decoded_pixel_sha256": "e913d17fe717b0f6583c8ea4f71795070a42b92f3dc032ba28b2f087028bb955"
+      },
+      "fixture": {
+        "variant": "V2",
+        "margin": 192,
+        "logo_size": 96,
+        "position": {
+          "x": 2464,
+          "y": 1248
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v2_ext",
+        "forced_size"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.996,
+              "gradient": 0.997,
+              "variance": 0.0,
+              "confidence": 0.996,
+              "circuit_breaker": false,
+              "detected": true
+            },
+            {
+              "variant": "V2",
+              "spatial": 0.996,
+              "gradient": 0.997,
+              "variance": 0.0,
+              "confidence": 0.996,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 2464,
+                "y": 1248,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 2464,
+                "y": 1248
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 2464,
+            "y": 1248
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "822acb255db078037f9a00d9bbaacd6981529c6602c6a30d77f4eed459ca54ad"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.996,
+              "gradient": 0.997,
+              "variance": 0.0,
+              "confidence": 0.996,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 2464,
+                "y": 1248,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 2464,
+                "y": 1248
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 2464,
+            "y": 1248
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "822acb255db078037f9a00d9bbaacd6981529c6602c6a30d77f4eed459ca54ad"
+        },
+        "forced_size": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "--force-small",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.996,
+              "gradient": 0.991,
+              "variance": 0.0,
+              "confidence": 0.996,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 2464,
+                "y": 1248,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 2464,
+                "y": 1248
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 2464,
+            "y": 1248
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "822acb255db078037f9a00d9bbaacd6981529c6602c6a30d77f4eed459ca54ad",
+          "flag": "force-small"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v2-large-2752x1536-hard",
+      "input": {
+        "format": "png",
+        "width": 2752,
+        "height": 1536,
+        "decoded_pixel_sha256": "6ecab4ddc4792b3e31989ea4d072878bdc29e693babaac6afcd5202f48d3cadf"
+      },
+      "fixture": {
+        "variant": "V2",
+        "margin": 192,
+        "logo_size": 96,
+        "position": {
+          "x": 2464,
+          "y": 1248
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v2_ext"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 1,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.265,
+              "gradient": 0.1,
+              "variance": 0.008,
+              "confidence": 0.164,
+              "circuit_breaker": false,
+              "detected": false
+            },
+            {
+              "variant": "V1",
+              "spatial": 0.178,
+              "circuit_breaker": true,
+              "confidence": 0.089,
+              "detected": false
+            }
+          ],
+          "output_written": false,
+          "output_decoded_sha256": null
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.265,
+              "gradient": 0.1,
+              "variance": 0.008,
+              "confidence": 0.164,
+              "circuit_breaker": false,
+              "detected": false,
+              "snap_region": {
+                "x": 2464,
+                "y": 1248,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 2464,
+                "y": 1248
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 2464,
+            "y": 1248
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "4257a398c3852d9e3e59ab6a1dbd8bcb3c8253b18339ef267eca6be75ddb261b"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v2-large-1500x1200",
+      "input": {
+        "format": "png",
+        "width": 1500,
+        "height": 1200,
+        "decoded_pixel_sha256": "9960a99f27745274fdfc7290b449ebdb5e4fdd274743d724e3ea4151c69e4046"
+      },
+      "fixture": {
+        "variant": "V2",
+        "margin": 192,
+        "logo_size": 96,
+        "position": {
+          "x": 1212,
+          "y": 912
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v2_ext"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 1.0,
+              "gradient": 1.0,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true
+            },
+            {
+              "variant": "V2",
+              "spatial": 1.0,
+              "gradient": 1.0,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 1212,
+                "y": 912,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 1212,
+                "y": 912
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 1212,
+            "y": 912
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "1ecd2200b010165b592c0c680858a0783b64e83cd44d9fa51aaaab7a03f922c0"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 1.0,
+              "gradient": 1.0,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 1212,
+                "y": 912,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 1212,
+                "y": 912
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 1212,
+            "y": 912
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "1ecd2200b010165b592c0c680858a0783b64e83cd44d9fa51aaaab7a03f922c0"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v2-small-1024x572",
+      "input": {
+        "format": "png",
+        "width": 1024,
+        "height": 572,
+        "decoded_pixel_sha256": "668e2e186529b73147a54d4cf79b2c6f028f0615030c6ba32a29471e9797bd73"
+      },
+      "fixture": {
+        "variant": "V2",
+        "margin": 71,
+        "logo_size": 36,
+        "position": {
+          "x": 917,
+          "y": 465
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v2_ext",
+        "forced_size"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.327,
+              "gradient": 0.117,
+              "variance": 0.0,
+              "confidence": 0.327,
+              "circuit_breaker": false,
+              "detected": false
+            },
+            {
+              "variant": "V2",
+              "spatial": 0.327,
+              "gradient": 0.117,
+              "variance": 0.0,
+              "confidence": 0.327,
+              "circuit_breaker": false,
+              "detected": false,
+              "snap_region": {
+                "x": 917,
+                "y": 465,
+                "w": 36,
+                "h": 36
+              },
+              "removal_position": {
+                "x": 917,
+                "y": 465
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 917,
+            "y": 465
+          },
+          "alpha_map": {
+            "width": 36,
+            "height": 36
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "40aff35189f3ed2f4fe88c341539d103b022e7844219044a0895666d518258c6"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.327,
+              "gradient": 0.117,
+              "variance": 0.0,
+              "confidence": 0.327,
+              "circuit_breaker": false,
+              "detected": false,
+              "snap_region": {
+                "x": 917,
+                "y": 465,
+                "w": 36,
+                "h": 36
+              },
+              "removal_position": {
+                "x": 917,
+                "y": 465
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 917,
+            "y": 465
+          },
+          "alpha_map": {
+            "width": 36,
+            "height": 36
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "40aff35189f3ed2f4fe88c341539d103b022e7844219044a0895666d518258c6"
+        },
+        "forced_size": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "--force-large",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": -0.015,
+              "circuit_breaker": true,
+              "confidence": -0.0075,
+              "detected": false,
+              "snap_region": {
+                "x": 917,
+                "y": 465,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 917,
+                "y": 465
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 917,
+            "y": 465
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "59a845a2d7b911d9df64a5538ece8f69b88f0bdd2ffa0a43e7856892736b9618",
+          "flag": "force-large"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v2-small-1024x559",
+      "input": {
+        "format": "png",
+        "width": 1024,
+        "height": 559,
+        "decoded_pixel_sha256": "d147193cd179fc1a4f55725887fc4af23c4e19133d6f278ed1da8f0676c16b29"
+      },
+      "fixture": {
+        "variant": "V2",
+        "margin": 70,
+        "logo_size": 36,
+        "position": {
+          "x": 918,
+          "y": 453
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v2_ext"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.997,
+              "gradient": 0.996,
+              "variance": 0.0,
+              "confidence": 0.997,
+              "circuit_breaker": false,
+              "detected": true
+            },
+            {
+              "variant": "V2",
+              "spatial": 0.997,
+              "gradient": 0.996,
+              "variance": 0.0,
+              "confidence": 0.997,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 918,
+                "y": 453,
+                "w": 36,
+                "h": 36
+              },
+              "removal_position": {
+                "x": 918,
+                "y": 453
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 918,
+            "y": 453
+          },
+          "alpha_map": {
+            "width": 36,
+            "height": 36
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "02ddf26c42a77349a150fde44f8928a7adc7ba184d980462a171b36a0f682db6"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.997,
+              "gradient": 0.996,
+              "variance": 0.0,
+              "confidence": 0.997,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 918,
+                "y": 453,
+                "w": 36,
+                "h": 36
+              },
+              "removal_position": {
+                "x": 918,
+                "y": 453
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 918,
+            "y": 453
+          },
+          "alpha_map": {
+            "width": 36,
+            "height": 36
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "02ddf26c42a77349a150fde44f8928a7adc7ba184d980462a171b36a0f682db6"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v2-small-1024x540",
+      "input": {
+        "format": "png",
+        "width": 1024,
+        "height": 540,
+        "decoded_pixel_sha256": "2afd5afebd6694140aeff8e79e12b2456a2187f0f140223ced00914a1086becd"
+      },
+      "fixture": {
+        "variant": "V2",
+        "margin": 69,
+        "logo_size": 36,
+        "position": {
+          "x": 919,
+          "y": 435
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v2_ext"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 1.0,
+              "gradient": 0.998,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true
+            },
+            {
+              "variant": "V2",
+              "spatial": 1.0,
+              "gradient": 0.998,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 919,
+                "y": 435,
+                "w": 36,
+                "h": 36
+              },
+              "removal_position": {
+                "x": 919,
+                "y": 435
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 919,
+            "y": 435
+          },
+          "alpha_map": {
+            "width": 36,
+            "height": 36
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "bc7105f79d5abf7177a3c7173620d276be87c45686100770080b1b890c3d7769"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 1.0,
+              "gradient": 0.998,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 919,
+                "y": 435,
+                "w": 36,
+                "h": 36
+              },
+              "removal_position": {
+                "x": 919,
+                "y": 435
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 919,
+            "y": 435
+          },
+          "alpha_map": {
+            "width": 36,
+            "height": 36
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "bc7105f79d5abf7177a3c7173620d276be87c45686100770080b1b890c3d7769"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v2-small-1376x768",
+      "input": {
+        "format": "png",
+        "width": 1376,
+        "height": 768,
+        "decoded_pixel_sha256": "b164ab68023dae3c2297706c516b7e83faeef4fd8421332271f6ef69c06733f6"
+      },
+      "fixture": {
+        "variant": "V2",
+        "margin": 96,
+        "logo_size": 48,
+        "position": {
+          "x": 1232,
+          "y": 624
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v2_ext"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.324,
+              "gradient": 0.085,
+              "variance": 0.0,
+              "confidence": 0.324,
+              "circuit_breaker": false,
+              "detected": false
+            },
+            {
+              "variant": "V2",
+              "spatial": 0.324,
+              "gradient": 0.085,
+              "variance": 0.0,
+              "confidence": 0.324,
+              "circuit_breaker": false,
+              "detected": false,
+              "snap_region": {
+                "x": 1232,
+                "y": 624,
+                "w": 48,
+                "h": 48
+              },
+              "removal_position": {
+                "x": 1232,
+                "y": 624
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 1232,
+            "y": 624
+          },
+          "alpha_map": {
+            "width": 48,
+            "height": 48
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "9e6d49e53bd7c1745a39c40b5dac56f8a3e6ea0f57ee64b30c7dce979e78c7fa"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.324,
+              "gradient": 0.085,
+              "variance": 0.0,
+              "confidence": 0.324,
+              "circuit_breaker": false,
+              "detected": false,
+              "snap_region": {
+                "x": 1232,
+                "y": 624,
+                "w": 48,
+                "h": 48
+              },
+              "removal_position": {
+                "x": 1232,
+                "y": 624
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 1232,
+            "y": 624
+          },
+          "alpha_map": {
+            "width": 48,
+            "height": 48
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "9e6d49e53bd7c1745a39c40b5dac56f8a3e6ea0f57ee64b30c7dce979e78c7fa"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v2-small-572x1024",
+      "input": {
+        "format": "png",
+        "width": 572,
+        "height": 1024,
+        "decoded_pixel_sha256": "86091994caba044b932e452227fbeb548688eefc5b0f41d51128674bf9ebe3bc"
+      },
+      "fixture": {
+        "variant": "V2",
+        "margin": 71,
+        "logo_size": 36,
+        "position": {
+          "x": 465,
+          "y": 917
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove",
+        "add_v2_ext"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 1.0,
+              "gradient": 0.998,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true
+            },
+            {
+              "variant": "V2",
+              "spatial": 1.0,
+              "gradient": 0.998,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 465,
+                "y": 917,
+                "w": 36,
+                "h": 36
+              },
+              "removal_position": {
+                "x": 465,
+                "y": 917
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 465,
+            "y": 917
+          },
+          "alpha_map": {
+            "width": 36,
+            "height": 36
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "f4981492f5d2a3ffe13621ee4e997db3a865c0315a257e587b41fb2da1cf4944"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 1.0,
+              "gradient": 0.998,
+              "variance": 0.0,
+              "confidence": 1.0,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 465,
+                "y": 917,
+                "w": 36,
+                "h": 36
+              },
+              "removal_position": {
+                "x": 465,
+                "y": 917
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 465,
+            "y": 917
+          },
+          "alpha_map": {
+            "width": 36,
+            "height": 36
+          },
+          "removal_size": "Small",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "f4981492f5d2a3ffe13621ee4e997db3a865c0315a257e587b41fb2da1cf4944"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "v2-large-2752x1536-q90",
+      "input": {
+        "format": "jpg",
+        "width": 2752,
+        "height": 1536,
+        "decoded_pixel_sha256": "214279ae2a3732d1ec30c1d6e70ee9859f0bed87a76e7092fa3a2ad97ce72910"
+      },
+      "fixture": {
+        "variant": "V2",
+        "margin": 192,
+        "logo_size": 96,
+        "position": {
+          "x": 2464,
+          "y": 1248
+        }
+      },
+      "eligible_for": [
+        "detection",
+        "default_e2e",
+        "force_remove"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.996,
+              "gradient": 0.994,
+              "variance": 0.0,
+              "confidence": 0.996,
+              "circuit_breaker": false,
+              "detected": true
+            },
+            {
+              "variant": "V2",
+              "spatial": 0.996,
+              "gradient": 0.994,
+              "variance": 0.0,
+              "confidence": 0.996,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 2464,
+                "y": 1248,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 2464,
+                "y": 1248
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 2464,
+            "y": 1248
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "79a9b73f572652ac795e5f1d3fb57496cc6592f74e7de3570de54941b3b13e65"
+        },
+        "force": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "--force",
+            "--no-legacy",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 0,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.996,
+              "gradient": 0.994,
+              "variance": 0.0,
+              "confidence": 0.996,
+              "circuit_breaker": false,
+              "detected": true,
+              "snap_region": {
+                "x": 2464,
+                "y": 1248,
+                "w": 96,
+                "h": 96
+              },
+              "removal_position": {
+                "x": 2464,
+                "y": 1248
+              }
+            }
+          ],
+          "removal_position": {
+            "x": 2464,
+            "y": 1248
+          },
+          "alpha_map": {
+            "width": 96,
+            "height": 96
+          },
+          "removal_size": "Large",
+          "removal_variant": "V2",
+          "output_written": true,
+          "output_decoded_sha256": "79a9b73f572652ac795e5f1d3fb57496cc6592f74e7de3570de54941b3b13e65"
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "clean-800x600",
+      "input": {
+        "format": "png",
+        "width": 800,
+        "height": 600,
+        "decoded_pixel_sha256": "ed2d3ba1a145ae91d06aaec8908c094547f5e8c6a99217161f18bbe4c1074af8"
+      },
+      "fixture": null,
+      "eligible_for": [
+        "detection",
+        "default_e2e"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 1,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.199,
+              "circuit_breaker": true,
+              "confidence": 0.0995,
+              "detected": false
+            },
+            {
+              "variant": "V1",
+              "spatial": -0.094,
+              "circuit_breaker": true,
+              "confidence": -0.047,
+              "detected": false
+            }
+          ],
+          "output_written": false,
+          "output_decoded_sha256": null
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "clean-2752x1536",
+      "input": {
+        "format": "png",
+        "width": 2752,
+        "height": 1536,
+        "decoded_pixel_sha256": "9681508f5328d4ffef7004f2dcfb3c85968c70730cb0c707935377d97ccabe4f"
+      },
+      "fixture": null,
+      "eligible_for": [
+        "detection",
+        "default_e2e"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 1,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": -0.075,
+              "circuit_breaker": true,
+              "confidence": -0.0375,
+              "detected": false
+            },
+            {
+              "variant": "V1",
+              "spatial": 0.178,
+              "circuit_breaker": true,
+              "confidence": 0.089,
+              "detected": false
+            }
+          ],
+          "output_written": false,
+          "output_decoded_sha256": null
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    },
+    {
+      "name": "clean-1024x572",
+      "input": {
+        "format": "png",
+        "width": 1024,
+        "height": 572,
+        "decoded_pixel_sha256": "94eac1cf406f41488d3b55ed3c345a15a6078d1dc762f2585f75675341d54a35"
+      },
+      "fixture": null,
+      "eligible_for": [
+        "detection",
+        "default_e2e"
+      ],
+      "runs": {
+        "default": {
+          "argv": [
+            "--no-banner",
+            "-v",
+            "-i",
+            "<in>",
+            "-o",
+            "<out>"
+          ],
+          "exit_code": 1,
+          "detections": [
+            {
+              "variant": "V2",
+              "spatial": 0.0,
+              "circuit_breaker": true,
+              "confidence": 0.0,
+              "detected": false
+            },
+            {
+              "variant": "V1",
+              "spatial": 0.0,
+              "circuit_breaker": true,
+              "confidence": 0.0,
+              "detected": false
+            }
+          ],
+          "output_written": false,
+          "output_decoded_sha256": null
+        }
+      },
+      "toolchain": {
+        "binary_sha256": "8f4796a1450a6471d29dc670627c73d6506c3fd686370c258b7d986b8de453d1",
+        "binary_version": "0.3.2",
+        "upstream_commit": "7c6a99f2c3df97eb3c430ef87a0c962aea5cb80e",
+        "cv2_version": "5.0.0"
+      }
+    }
+  ]
+}
