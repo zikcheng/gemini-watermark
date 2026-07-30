@@ -78,6 +78,15 @@ Each step consumes the previous step's output, so run them in order:
 | 4 | `validate_manifest.py` | `test/data/manifest.json`, `manifest.schema.json` | nothing (checks only) |
 | 5 | `make_patches.py` | `fixtures/`, `golden/`, `test/data/manifest.json` | `test/data/cases/` |
 
+`dump_imageops.py` stands outside that chain: it measures the pinned cv2
+itself rather than the reference binary, so it needs neither the kit nor
+the environment variables. Run it whenever the pinned opencv-python
+version changes.
+
+| Script | Reads | Writes |
+|---|---|---|
+| `dump_imageops.py` | nothing but `cv2` | `test/data/imageops/` |
+
 ## One-shot regeneration
 
 ```bash
@@ -151,6 +160,34 @@ negatives carry only `patch-watermarked.png`, and the JPEG case has no
 The generator enforces two invariants and fails rather than emit bad data:
 every detector region must fall inside the patch bbox, and `test/data`
 must stay under 4 MiB.
+
+## What the committed cv2 dumps are
+
+`test/data/imageops/` holds measured behavior of the pinned
+opencv-python, for the primitives the port reimplements. OpenCV's real
+numbers differ from textbook formulas in ways that silently move detection
+scores, so these are measurements, never derivations.
+
+M0 ships one: `quantize-u8.json`, measuring `saturate_cast<uchar>` — the
+conversion C++ uses to write blend results back (`convertTo(CV_8UC3)`).
+Its `samples` array pairs the exact float32 input with the byte cv2
+produced, and the meta records whether `clamp(half-to-even(v), 0, 255)`
+reproduced every sample — so the rule stated in CLAUDE.md is a checked
+claim rather than prose.
+
+Read `measured_against` before treating it as proof: the dump comes from
+opencv-python 5.0.0, while the reference binary statically links OpenCV
+**4.11.0**. `cvRound` is implementation- and rounding-mode-dependent, so
+this pins the law for our own arithmetic but is not self-sufficient
+evidence about the binary. The comparison that actually ties the law to
+the binary is M2's golden-force pixel check; if the two ever disagree, the
+golden images win.
+Inputs are widened to doubles in the JSON deliberately: `255.4` is not
+representable in float32, and a JavaScript `255.4` literal is a third
+value again, so a consumer must test the number cv2 actually saw.
+
+M3 fills in the remaining operators (grayscale, Sobel, meanStdDev, NCC,
+resize) as `.bin` + `.json` pairs alongside it.
 
 ## Exit codes
 
