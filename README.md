@@ -81,7 +81,7 @@ skip.
 | Module | Status |
 |---|---|
 | Position config (V1/V2, canonical inference) | ✅ ported + tested |
-| Alpha maps (baked calibration data) | ⏳ |
+| Alpha maps (baked calibration data) | ✅ ported + tested |
 | Reverse alpha blend (remove / add) | ⏳ |
 | Three-stage NCC detection | ⏳ |
 | Guided multi-scale detection (snap) | ❌ M7 (not in v0.1.0) |

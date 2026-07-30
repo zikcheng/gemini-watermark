@@ -136,3 +136,59 @@ stores each forced-size run's `alpha_map`, `removal_size`,
 rather than infer it. `validate_manifest.py` deliberately accepts both
 outcomes and only flags the self-contradictory combination (identical
 output with differing templates).
+
+---
+
+## D4 — `alpha = byte / 255` is not bit-identical to upstream's
+
+**Milestone**: M1 commit 1 · recorded 2026-07-31
+
+**Symptom**: the M1 report claimed the TypeScript division reproduces
+upstream's conversion bit for bit. It does not. Upstream's
+`convertTo(CV_32FC1, 1.0/255.0)` (blend_modes.cpp `calculate_alpha_map`)
+multiplies in a **float32** work type, while this port divides in float64
+and stores the result into a `Float32Array`. The two disagree by one ulp
+on **126 of the 256** possible byte values.
+
+**Evidence**: the original claim came from a probe that computed *both*
+candidates in float64 and only then narrowed to float32 — which compares
+two spellings of the same double computation and can only ever agree.
+Modelling the work type correctly, and reaching OpenCV's literal
+`convertTo` through two independent routes whose scale is exactly 1/255:
+
+| route | vs float32 multiply | vs float64 divide |
+|---|---|---|
+| `normalize(NORM_MINMAX, alpha=0, beta=1, CV_32F)` | 0 differ | 126 differ |
+| `normalize(NORM_INF, alpha=1, CV_32F)` | 0 differ | 126 differ |
+| `multiply(uint8, float32 **array**, CV_32F)` | 0 differ | 126 differ |
+| `multiply(uint8, **scalar**, CV_32F)` | 126 differ | 0 differ |
+
+The two `normalize` routes agree with each other exactly. `max |Δ| =
+5.96e-8`; both endpoints are exact (`v=0` → 0, `v=255` → 1); e.g. `v=3`
+gives `0.011764707` from `convertTo` versus `0.011764706` here.
+
+Note the last row: an arithmetic op with a **scalar** operand takes a
+double-precision path and lands on the *other* answer. This is the real
+lesson — the multi-route corroboration that validated the quantization
+dump (D-none; all routes agreed there) does **not** extend to scaled
+conversions, where the work type depends on whether the operand is a
+scalar or an array. Any future cv2 oracle involving a scale factor must
+say which form it used.
+
+**Disposition**: keep the float64 division; no code change.
+
+- CLAUDE.md rule 4 already states the contract: C++ computes in float32,
+  JS in float64, and "this is acceptable — the contract with golden
+  outputs is ±1 per 8-bit channel on restored pixels, not bit-identical
+  floats". Decisions and geometry remain exact; only float width moves.
+- Downstream budget, for M2. Removal is
+  `orig = (w − 255α) / (1 − α)`, so `∂orig/∂α = (w − 255)/(1 − α)²`. For a
+  genuinely watermarked pixel `w = 255α + (1 − α)·orig`, which collapses
+  that to `(orig − 255)/(1 − α)`. With the remove-path clamp `α ≤ 0.99`
+  the amplification is at most `255 / 0.01 = 2.55e4`, so the worst-case
+  error is `5.96e-8 × 2.55e4 ≈ 1.5e-3` of one uint8 level — three orders
+  of magnitude inside the ±1 tolerance.
+- The residual risk is not magnitude but position: a golden pixel whose
+  exact value sits within 1.5e-3 of a rounding boundary could quantize
+  differently. If an M2 golden comparison ever fails by exactly 1 on
+  isolated pixels, check this before suspecting the blend math.

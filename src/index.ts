@@ -15,6 +15,8 @@ export type {
   WatermarkVariant,
 } from './types.js';
 
+export { getSourceAlphaMap } from './alpha-maps.js';
+
 export {
   getWatermarkConfig,
   getWatermarkSize,
