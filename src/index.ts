@@ -34,6 +34,8 @@ export { addWatermarkRegion, removeWatermarkRegion } from './blend.js';
 
 export { detectWatermark } from './detect.js';
 
+export { processImage } from './pipeline.js';
+
 export { passesThreshold } from './gating.js';
 
 export {
@@ -41,7 +43,3 @@ export {
   getWatermarkSize,
   getWatermarkTopLeft,
 } from './position.js';
-
-// `detectWatermark` and `processImage` arrive in M4 commits 2 and 3. Their
-// types are exported above already, so the contract is complete — and
-// testable — before any detection code exists.

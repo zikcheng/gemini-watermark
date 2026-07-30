@@ -30,6 +30,7 @@ import {
   toGrayscale,
 } from './imageops.js';
 import { getWatermarkConfig, getWatermarkSize, getWatermarkTopLeft } from './position.js';
+import { assertImageBuffer, assertSize, assertVariant } from './validate.js';
 import type {
   DetectOptions,
   DetectionResult,
@@ -53,31 +54,6 @@ const MIN_REFERENCE_HEIGHT = 8;
 
 /** ...and a reference deviation above this, or the ratio says nothing. */
 const MIN_REFERENCE_STDDEV = 5.0;
-
-function validate(image: ImageBuffer): void {
-  if (image.channels !== 3 && image.channels !== 4) {
-    throw new RangeError(
-      `image.channels is ${String(image.channels)}, expected 3 (RGB) or 4 (RGBA)`,
-    );
-  }
-  if (
-    !Number.isInteger(image.width) ||
-    !Number.isInteger(image.height) ||
-    image.width < 1 ||
-    image.height < 1
-  ) {
-    throw new RangeError(
-      `image dimensions must be positive integers, got ${image.width}x${image.height}`,
-    );
-  }
-  const expected = image.width * image.height * image.channels;
-  if (image.data.length !== expected) {
-    throw new RangeError(
-      `image.data holds ${image.data.length} bytes, expected ${expected} ` +
-        `(${image.width}x${image.height}x${image.channels})`,
-    );
-  }
-}
 
 /** Copy a rectangle out of an image as its own buffer. */
 function cropped(image: ImageBuffer, x: number, y: number, w: number, h: number): ImageBuffer {
@@ -127,14 +103,17 @@ function peak(values: Float32Array, width: number): { value: number; x: number; 
 /**
  * Run the three-stage detector for one variant.
  *
- * @throws RangeError when the buffer shape, channel count or dimensions
- *   are invalid
+ * @throws TypeError when `image` is not an object
+ * @throws RangeError when the buffer shape, channel count or dimensions are
+ *   invalid, or an option carries a value outside its union
  */
 export function detectWatermark(
   image: ImageBuffer,
   options: DetectOptions = {},
 ): DetectionResult {
-  validate(image);
+  assertImageBuffer(image);
+  assertVariant(options.variant, 'options.variant');
+  assertSize(options.size, 'options.size');
 
   const variant: WatermarkVariant = options.variant ?? 'V2';
   const size: WatermarkSize = options.size ?? getWatermarkSize(image.width, image.height);

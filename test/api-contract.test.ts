@@ -45,6 +45,7 @@ describe('public exports', () => {
       'getWatermarkSize',
       'getWatermarkTopLeft',
       'passesThreshold',
+      'processImage',
       'removeWatermarkRegion',
     ]);
   });
@@ -65,6 +66,7 @@ describe('public exports', () => {
       'resizeBilinear',
       'resizeAreaIntegerFactor',
       'effectiveAlphaMap', // detection-internal alpha resolution
+      'reportedAttempt', // orchestration-internal: which skipped attempt is reported
       'decodeBase64',
     ]) {
       expect(Object.keys(api)).not.toContain(internal);
@@ -101,6 +103,14 @@ describe('exported function signatures', () => {
     >();
     expectTypeOf(api.detectWatermark).parameter(0).toEqualTypeOf<ImageBuffer>();
     expectTypeOf(api.detectWatermark).returns.toEqualTypeOf<DetectionResult>();
+  });
+
+  it('processImage takes an ImageBuffer and reports without returning pixels', () => {
+    // Behaviour — the fallback, the skip guarantee, the tie rule — is
+    // covered in test/detect-manifest.test.ts against the manifest.
+    expectTypeOf(api.processImage).parameter(0).toEqualTypeOf<ImageBuffer>();
+    expectTypeOf(api.processImage).parameter(1).toEqualTypeOf<ProcessOptions | undefined>();
+    expectTypeOf(api.processImage).returns.toEqualTypeOf<ProcessResult>();
   });
 });
 
