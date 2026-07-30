@@ -294,3 +294,93 @@ cases and is exact on the reachable domain.
   would leave the dump's 9.4e-3 placements untouched and merely swap one
   arbitrary boundary for another; the fix, should it ever be needed, is
   cv2's relative criterion, measured.
+
+---
+
+## D7 — manifest equivalence leaves stage 3 almost entirely unmeasured
+
+**Milestone**: M4 commit 4 · recorded 2026-07-31
+
+**Symptom**: the fourteen-case manifest suite is green, and reads as
+though it exercises the detector end to end. It does not exercise stage 3.
+Across all 30 logged detections the variance score is `0.0` in every case
+but one, and the sole non-zero value is `0.008`. A whole stage, and the
+`ref_h = min(y1, config.logo_size)` decision inside it, can therefore be
+rewritten without a single manifest assertion noticing.
+
+**Evidence**: the stage-3 column of the default runs, straight from
+`test/data/manifest.json` —
+
+| case | spatial | gradient | variance |
+|---|---|---|---|
+| `v1-small-800x600` (V1) | 0.691 | 0.404 | **0.0** |
+| `v1-large-1500x1200` (V1) | 1.000 | 1.000 | **0.0** |
+| `v2-large-2752x1536` | 0.996 | 0.997 | **0.0** |
+| `v2-large-1500x1200` | 1.000 | 1.000 | **0.0** |
+| `v2-small-1024x572` | 0.327 | 0.117 | **0.0** |
+| `v2-small-1024x559` | 0.997 | 0.996 | **0.0** |
+| `v2-small-1024x540` | 1.000 | 0.998 | **0.0** |
+| `v2-small-1376x768` | 0.324 | 0.085 | **0.0** |
+| `v2-small-572x1024` | 1.000 | 0.998 | **0.0** |
+| `v2-large-2752x1536-q90` | 0.996 | 0.994 | **0.0** |
+| `v2-large-2752x1536-hard` | 0.265 | 0.100 | 0.008 |
+| the five circuit-broken attempts | — | — | never ran |
+
+The cause is structural, not accidental. `var_score = clamp(1 - s_wm/s_ref)`
+is positive only when the watermark region is *smoother* than the strip
+above it, and the kit's fixtures composite a watermark onto ordinary
+photographic content, which makes the region rougher. The one exception is
+the deliberately busy `-hard` fixture, and even there the score is 0.008.
+
+The `ref_h` term is doubly hidden. `config.logo_size` and the template edge
+differ only under a forced size, and all three `forced_size` runs fail to
+separate them: `v1-small-800x600` and `v2-small-1024x572` circuit-break
+before stage 3 (spatial −0.075 and −0.015), and `v2-large-2752x1536`
+resolves the forced template back to 96px, which is already the config's
+logo size (D3). Substituting the template height for the config's leaves
+**all 361 CI tests and all 54 golden tests green** — measured against the
+suite as it stood at commit `1fcd442`, not assumed.
+
+**Disposition**: covered by construction in `test/detect-branches.test.ts`,
+with no change to the port.
+
+- Two images differing only in which 48-row band above the watermark
+  carries noise. A config-derived strip sees one band and scores `0` on the
+  other; a template-derived strip spans both and cannot tell them apart.
+  The assertion is that the two scores **differ** — which needs no
+  reference number, and is exactly what the substitution above breaks
+  (both land on 0.654728).
+- The `ref_h > 8` gate gets the usual three-point treatment through image
+  height, since V1 small puts `y1` at `height − 80`: 88px, 89px, 90px.
+- The general lesson outlives this entry. The manifest is an *equivalence*
+  oracle, not a coverage one: it proves the port agrees with the binary
+  wherever the binary was run, and says nothing about branches no fixture
+  reaches. Adding a stage or a threshold means asking which fixture would
+  see it, and building one if the answer is none.
+
+**Open for M7 — one branch where a new kit fixture would buy something
+real.** M4 commit 4 added no fixture, on the grounds that the branches
+without a reference value are decided by structural properties the upstream
+source states outright. The V2 small snap is the one place that reasoning is
+weaker than the rest, and it is worth naming rather than leaving implied.
+
+Every V2 small fixture in the kit carries its watermark at exactly the
+formula position, so the sweep always finds offset zero and the trusted and
+rejected paths return the same rectangle — the kit cannot separate them at
+all. The synthetic cases in `test/detect-branches.test.ts` displace the
+watermark by 1–3px and assert that a strong correlation adopts the offset
+and a weak one does not. That pins the port against *this repository's
+reading of `detect_one_variant`*, which is a weaker claim than the rest of
+the file makes: the other behaviour rows assert something the C++ states
+directly (a strip of 8 rows is not `> 8`; an empty ROI returns before stage
+1), whereas "the sweep lands on the displaced position and the trust gate
+accepts it" is a claim about what the binary *computes*, not about what its
+source says.
+
+A fixture whose watermark sits a pixel off the formula position — generated
+through `make_fixtures.py` like any other, so the binary's own `snap_region`
+lands in the manifest — would close that gap and convert three synthetic
+rows into equivalence rows. It is the only incremental kit work identified
+during M4 with a substantive return, which is why it is recorded here
+instead of being done: it does not block v0.1.0, and M7 already owns the
+guided-snap work the same fixture would serve.
