@@ -18,6 +18,7 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run test
-      - run: npm run build
+      # Same gate contributors run locally: forbidden-import scan,
+      # typecheck, tests, build. Golden tests are excluded by design --
+      # they need the out-of-repo reference kit (see vitest.config.ts).
+      - run: npm run check
