@@ -1,0 +1,7 @@
+# Pinned exactly (pip freeze) — the cv2 build is a numeric oracle for the
+# port (resize kernels, cvRound quantization), so its version is part of
+# the contract, not an implementation detail. Recreate with:
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+numpy==2.5.1
+opencv-python==5.0.0.93
+pillow==12.3.0
