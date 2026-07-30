@@ -209,6 +209,14 @@
         9
       ]
     },
+    "degenerate-varied-image": {
+      "file": "match-template-ccoeff-normed-degenerate-varied-image.bin",
+      "dtype": "float32",
+      "shape": [
+        12,
+        12
+      ]
+    },
     "varied-image-constant-template-result": {
       "file": "match-template-ccoeff-normed-varied-image-constant-template-result.bin",
       "dtype": "float32",

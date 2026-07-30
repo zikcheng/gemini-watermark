@@ -102,24 +102,59 @@ describe('toGrayscale vs cv2 COLOR_BGR2GRAY', () => {
     },
   );
 
-  it('exercises the whole 0..255 range on the synthetic input', () => {
-    // This case and the real crops catch different faults, which is why
-    // both are here. The synthetic image is built so no two channels ever
-    // share a value at the same pixel, so a channel mix-up moves every
-    // pixel: swapping R and B changes all 256 of them, against 27.4%,
-    // 65.1% and 96.9% on the photographic crops. A sub-LSB coefficient
-    // drift (9798 -> 9799) is the opposite kind of fault — it only shows
-    // where a pixel already sits on a rounding boundary, which is a
-    // property of content, not of size: the largest crop (12544 px) misses
-    // it entirely while both smaller ones catch it.
-    const entry = grayInputs.find((e) => e.label === 'synthetic-16x16');
-    expect(entry, 'dump must carry the synthetic full-range case').toBeDefined();
+  it('probes the full range and the float-formula divergences', () => {
+    // The synthetic case and the real crops catch different faults.
+    //
+    // Its top half walks every intensity with the channels rolled apart,
+    // so no two channels share a value at a pixel and a channel mix-up
+    // moves all 256: against 27.4%, 65.1% and 96.9% on the photographic
+    // crops. Its bottom half is 256 RGB triples where the textbook float
+    // BT.601 weights produce a different byte than OpenCV's fixed-point
+    // path — only 0.137% of the colour cube does, which is why real
+    // content barely notices the substitution and this half exists.
+    //
+    // The crops still matter for a third fault: a sub-LSB coefficient
+    // drift (9798 -> 9799) only shows where a pixel already sits on a
+    // rounding boundary, which is a property of content rather than size —
+    // the largest crop misses it while both smaller ones catch it.
+    const entry = grayInputs.find((e) => e.label === 'synthetic-16x32');
+    expect(entry, 'dump must carry the synthetic probe case').toBeDefined();
     const image = rgbInput(entry as GrayInput);
+
+    const walkPixels = 256;
     for (let channel = 0; channel < 3; channel += 1) {
       const seen = new Set<number>();
-      for (let i = channel; i < image.data.length; i += 3) seen.add(image.data[i] ?? -1);
-      expect(seen.size).toBe(256);
+      for (let i = 0; i < walkPixels; i += 1) seen.add(image.data[i * 3 + channel] ?? -1);
+      expect(seen.size, `channel ${channel} covers every intensity`).toBe(256);
     }
+
+    // Every probe pixel must actually be a divergence, or the case has
+    // quietly stopped doing its job. Both roundings are checked because
+    // the float substitution still has to round, and half-up
+    // (`Math.round`) and half-to-even disagree on exact .5 sums — the
+    // generator selects triples that diverge under either, and this is
+    // what keeps that property from eroding.
+    const expected = grayDump.uint8(entry?.output ?? '');
+    const halfEven = (v: number): number => {
+      const lower = Math.floor(v);
+      const fraction = v - lower;
+      if (fraction > 0.5) return lower + 1;
+      if (fraction < 0.5) return lower;
+      return lower % 2 === 0 ? lower : lower + 1;
+    };
+
+    let underHalfUp = 0;
+    let underHalfEven = 0;
+    for (let i = walkPixels; i < image.width * image.height; i += 1) {
+      const r = image.data[i * 3] ?? 0;
+      const g = image.data[i * 3 + 1] ?? 0;
+      const b = image.data[i * 3 + 2] ?? 0;
+      const exact = 0.299 * r + 0.587 * g + 0.114 * b;
+      if (Math.round(exact) !== expected.data[i]) underHalfUp += 1;
+      if (halfEven(exact) !== expected.data[i]) underHalfEven += 1;
+    }
+    expect(underHalfUp, 'every probe diverges under half-up rounding').toBe(256);
+    expect(underHalfEven, 'every probe diverges under half-to-even').toBe(256);
   });
 
   it('leaves the alpha channel of an RGBA buffer out of the luma', () => {
@@ -333,29 +368,7 @@ describe('matchTemplateCcoeffNormed vs cv2 TM_CCOEFF_NORMED', () => {
       return { image: dump.float32('degenerate-perturbed-image'), template };
     }
     if (entry.label === 'varied-image-constant-template') {
-      // The one operand the dump does not store: cv2 was handed the 4x4
-      // ramp upscaled 3x by nearest-neighbour repetition, so it is rebuilt
-      // from the stored ramp.
-      //
-      // Its *values* carry no weight in this case — the template is
-      // constant, so the implementation returns 1 everywhere before it
-      // ever reads the image, and zeroing or transposing this
-      // reconstruction leaves all 32 tests green. Only its dimensions
-      // matter, and those the result-shape assertion pins. The array is
-      // slated to be dumped properly at M3 close, at which point this
-      // rebuild goes away.
-      const ramp = dump.float32('degenerate-varied-template');
-      const [rows = 0, cols = 0] = ramp.shape;
-      const width = cols * 3;
-      const height = rows * 3;
-      const data = new Float32Array(width * height);
-      for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-          data[y * width + x] =
-            ramp.data[Math.floor(y / 3) * cols + Math.floor(x / 3)] ?? 0;
-        }
-      }
-      return { image: { data, width, height }, template };
+      return { image: dump.float32('degenerate-varied-image'), template };
     }
     return { image: dump.float32('degenerate-flat-image'), template };
   }
