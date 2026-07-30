@@ -1,0 +1,29 @@
+{
+  "name": "clean-2752x1536",
+  "original_size": {
+    "width": 2752,
+    "height": 1536
+  },
+  "input_format": "png",
+  "eligible_for": [
+    "detection",
+    "default_e2e"
+  ],
+  "fixture": null,
+  "patch": {
+    "bbox": {
+      "x": 2456,
+      "y": 1144,
+      "w": 240,
+      "h": 336
+    },
+    "channels": 3,
+    "files": {
+      "watermarked": {
+        "file": "patch-watermarked.png",
+        "decoded_pixel_sha256": "ce77c88bec00dfd5d0011fb601b80fb71585179c812b482c16765b6dfc8d48b1"
+      }
+    }
+  },
+  "blend": null
+}

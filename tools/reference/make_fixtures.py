@@ -23,7 +23,6 @@ Outputs (env):  GWT_REFERENCE_DIR/fixtures/{originals,watermarked}/*.png
 """
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
 
@@ -31,8 +30,9 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import (require_file, resolve_env_dirs,  # noqa: E402
+from _common import (die, require_file, resolve_env_dirs,  # noqa: E402
                      verify_upstream_checkout)
+from _geometry import get_watermark_config, watermark_position  # noqa: E402
 
 LOGO_VALUE = 255.0
 
@@ -49,35 +49,6 @@ def half_scale(alpha: np.ndarray) -> np.ndarray:
     """Exact 2x downscale via 2x2 box mean == cv::INTER_AREA for 96->48."""
     h, w = alpha.shape
     return alpha.reshape(h // 2, 2, w // 2, 2).mean(axis=(1, 3))
-
-
-def round_half_away(v: float) -> int:
-    """C++ std::round semantics: ties go away from zero.
-
-    Python's built-in round() is banker's rounding, which disagrees on .5
-    boundaries — CLAUDE.md porting rule 1. No dimension in the fixture set
-    below lands on a tie today, but the generator must not depend on that.
-    """
-    return int(math.floor(v + 0.5)) if v >= 0 else int(math.ceil(v - 0.5))
-
-
-def v2_small_config(W: int, H: int):
-    """Port of v2_small_config_from_dims() — canonical-source inference."""
-    long_side, short_side = max(W, H), min(W, H)
-    if long_side > 1100:
-        doubled = 2.0 * long_side
-        source = min((2752.0, 2816.0, 2848.0), key=lambda c: abs(doubled - c))
-    elif short_side >= 566:
-        source = 2752.0
-    elif short_side >= 550:
-        source = 2816.0
-    else:
-        source = 2848.0
-    scale = long_side / source
-    margin = round_half_away(192.0 * scale)
-    ideal = round_half_away(96.0 * scale)
-    logo = 36 if ideal <= 40 else ideal
-    return margin, logo
 
 
 def content(art_dir: Path, source: str, size: tuple[int, int]) -> np.ndarray:
@@ -137,20 +108,26 @@ def main() -> None:
     # name -> (W, H, variant, margin, logo, alpha, content_source)
     cases = []
 
+    # The alpha template for a logo size, per variant. V2's 48px entry is
+    # the half-scale free-tier logo; every other size is a calibrated
+    # capture. A size with no entry means the fixture set would need a new
+    # interpolation path, so fail loudly rather than guess.
+    alphas = {"V1": {48: a_v1_48, 96: a_v1_96},
+              "V2": {36: a_v2_36, 48: a_v2_48, 96: a_v2_96}}
+
+    def add_case(name, W, H, variant, src):
+        config = get_watermark_config(W, H, variant)
+        alpha = alphas[variant].get(config.logo_size)
+        if alpha is None:
+            die(f"{name}: no {variant} alpha template for logo size "
+                f"{config.logo_size}")
+        cases.append((name, W, H, variant, config, alpha, src))
+
     def v1_case(name, W, H, src):
-        small = not (W > 1024 and H > 1024)
-        margin, logo = (32, 48) if small else (64, 96)
-        alpha = a_v1_48 if small else a_v1_96
-        cases.append((name, W, H, "V1", margin, logo, alpha, src))
+        add_case(name, W, H, "V1", src)
 
     def v2_case(name, W, H, src):
-        if W > 1024 and H > 1024:
-            margin, logo = 192, 96
-            alpha = a_v2_96
-        else:
-            margin, logo = v2_small_config(W, H)
-            alpha = {36: a_v2_36, 48: a_v2_48}[logo]
-        cases.append((name, W, H, "V2", margin, logo, alpha, src))
+        add_case(name, W, H, "V2", src)
 
     v1_case("v1-small-800x600", 800, 600, "comparison.png")
     v1_case("v1-large-1500x1200", 1500, 1200, "gui_demo.png")
@@ -168,18 +145,19 @@ def main() -> None:
 
     manifest = {"fixtures": [], "negatives": []}
 
-    for name, W, H, variant, margin, logo, alpha, src in cases:
+    for name, W, H, variant, config, alpha, src in cases:
         rgb = content(art_dir, src, (W, H))
-        x, y = W - margin - logo, H - margin - logo
+        x, y = watermark_position(config, W, H)
         wm = apply_watermark(rgb, alpha, x, y)
         Image.fromarray(rgb).save(orig_dir / f"{name}.png")
         Image.fromarray(wm).save(wm_dir / f"{name}.png")
         manifest["fixtures"].append({
             "name": name, "width": W, "height": H, "variant": variant,
-            "margin": margin, "logo_size": logo,
+            "margin": config.margin_right, "logo_size": config.logo_size,
             "position": {"x": x, "y": y}, "content_source": src,
         })
-        print(f"{name}: {W}x{H} {variant} logo={logo} margin={margin} pos=({x},{y})")
+        print(f"{name}: {W}x{H} {variant} logo={config.logo_size} "
+              f"margin={config.margin_right} pos=({x},{y})")
 
     # JPEG-recompressed variant of one V2-large fixture (breaks exact math)
     jpeg_src = wm_dir / "v2-large-2752x1536.png"

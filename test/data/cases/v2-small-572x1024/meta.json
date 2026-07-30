@@ -1,0 +1,78 @@
+{
+  "name": "v2-small-572x1024",
+  "original_size": {
+    "width": 572,
+    "height": 1024
+  },
+  "input_format": "png",
+  "eligible_for": [
+    "detection",
+    "default_e2e",
+    "force_remove",
+    "add_v2_ext"
+  ],
+  "fixture": {
+    "variant": "V2",
+    "margin": 71,
+    "logo_size": 36,
+    "position": {
+      "x": 465,
+      "y": 917
+    }
+  },
+  "patch": {
+    "bbox": {
+      "x": 454,
+      "y": 870,
+      "w": 94,
+      "h": 130
+    },
+    "channels": 3,
+    "files": {
+      "watermarked": {
+        "file": "patch-watermarked.png",
+        "decoded_pixel_sha256": "fa1d565597136bb31c3b94cea18e46729f86fef1a5846f1083edf99b22745b7c"
+      },
+      "original": {
+        "file": "patch-original.png",
+        "decoded_pixel_sha256": "e9707c37f962cff9dcd1174189c41b5ef8417818d2a2b9f236b4f7a8c484f3ef"
+      },
+      "golden_default": {
+        "file": "patch-golden-default.png",
+        "decoded_pixel_sha256": "c75014d57683d8a431b56addb04a80995061a170f00930637985c5a020f10fbd"
+      },
+      "golden_force": {
+        "file": "patch-golden-force.png",
+        "decoded_pixel_sha256": "c75014d57683d8a431b56addb04a80995061a170f00930637985c5a020f10fbd"
+      }
+    }
+  },
+  "blend": {
+    "bbox": {
+      "x": 457,
+      "y": 909,
+      "w": 52,
+      "h": 52
+    },
+    "watermark_region_in_crop": {
+      "x": 8,
+      "y": 8,
+      "w": 36,
+      "h": 36
+    },
+    "files": {
+      "watermarked": {
+        "file": "blend-watermarked.png",
+        "decoded_pixel_sha256": "ca68dd3b9abd1628e63dca95365e8c949c0f3d4910695042b9ab5a834757069f"
+      },
+      "original": {
+        "file": "blend-original.png",
+        "decoded_pixel_sha256": "2cf0f5fee4028db76a5f475da7d68b102071d25914e03c016cc6e0f0427636a7"
+      },
+      "golden_force": {
+        "file": "blend-golden-force.png",
+        "decoded_pixel_sha256": "cde257131bb7c70e44a121f2987d4f39d91b814aaa24da31632422e96d67b86d"
+      }
+    }
+  }
+}

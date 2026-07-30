@@ -76,10 +76,7 @@ Each step consumes the previous step's output, so run them in order:
 | 2 | `make_fixtures.py` | `alpha/`, `$GWT_UPSTREAM_DIR/artworks/` | `$GWT_REFERENCE_DIR/fixtures/`, `test/data/fixtures.json` |
 | 3 | `gen_golden.py` | `bin/gwt-mini`, `fixtures/` | `$GWT_REFERENCE_DIR/golden/`, `test/data/manifest.json` |
 | 4 | `validate_manifest.py` | `test/data/manifest.json`, `manifest.schema.json` | nothing (checks only) |
-
-> One more script lands in a later M0 commit (see `docs/plan/M0.md`):
-> `make_patches.py`, which produces the committed `test/data/cases/` patch
-> data. This table grows with it.
+| 5 | `make_patches.py` | `fixtures/`, `golden/`, `test/data/manifest.json` | `test/data/cases/` |
 
 ## One-shot regeneration
 
@@ -91,7 +88,8 @@ PY="$GWT_REFERENCE_DIR/.venv/bin/python3"
 "$PY" tools/reference/extract_alpha.py && \
 "$PY" tools/reference/make_fixtures.py --fixtures-out test/data/fixtures.json && \
 "$PY" tools/reference/gen_golden.py --manifest-out test/data/manifest.json && \
-"$PY" tools/reference/validate_manifest.py test/data/manifest.json
+"$PY" tools/reference/validate_manifest.py test/data/manifest.json && \
+"$PY" tools/reference/make_patches.py
 ```
 
 The whole pipeline is deterministic — no randomness, no timestamps in the
@@ -126,6 +124,33 @@ reading it:
   removal position comes from the dims-based config while the template
   comes from the forced size. The recorded `alpha_map` is the evidence, and
   it is stored exactly as produced — never corrected (DEVIATIONS D3).
+
+## What the committed patch data is
+
+`make_patches.py` writes `test/data/cases/<name>/`, the CI-sized slice of
+the kit. Two crops per case, both described by that case's `meta.json`:
+
+- **`patch-*.png`** — the union of every region `detect_one_variant` reads
+  for either variant (template ROI plus the variance reference strip
+  above it), padded by 8px. Forced-size cases also union in the regions
+  their forced combination reads.
+- **`blend-*.png`** — the watermark region ±8px, for region-math tests
+  only. `meta.blend.watermark_region_in_crop` gives its position inside
+  the crop.
+
+A patch is **not an image**: every geometry decision the engine makes is
+inferred from image dimensions, so tests must rebuild a full-size buffer
+via `test/helpers/reconstruct.ts` before calling the engine.
+
+Which roles exist per case is meaningful, not incidental:
+`patch-golden-default.png` is present only when the default run actually
+processed the image (the `v2-large-2752x1536-hard` skip case has none),
+negatives carry only `patch-watermarked.png`, and the JPEG case has no
+`original` because the kit stores no separate ground truth for it.
+
+The generator enforces two invariants and fails rather than emit bad data:
+every detector region must fall inside the patch bbox, and `test/data`
+must stay under 4 MiB.
 
 ## Exit codes
 

@@ -1,0 +1,83 @@
+{
+  "name": "v1-small-800x600",
+  "original_size": {
+    "width": 800,
+    "height": 600
+  },
+  "input_format": "png",
+  "eligible_for": [
+    "detection",
+    "default_e2e",
+    "force_remove",
+    "add_v1",
+    "forced_size"
+  ],
+  "fixture": {
+    "variant": "V1",
+    "margin": 32,
+    "logo_size": 48,
+    "position": {
+      "x": 720,
+      "y": 520
+    }
+  },
+  "patch": {
+    "bbox": {
+      "x": 697,
+      "y": 461,
+      "w": 103,
+      "h": 139
+    },
+    "channels": 3,
+    "files": {
+      "watermarked": {
+        "file": "patch-watermarked.png",
+        "decoded_pixel_sha256": "a5c3bc53a4307403c5bed3d25de1b7afbf065c94030a42607a99ff24dfcb7af9"
+      },
+      "original": {
+        "file": "patch-original.png",
+        "decoded_pixel_sha256": "79eb7b297b24f3e5cbbb1034158dfa3c7bbd2d2e86055933e9e400441016c555"
+      },
+      "golden_default": {
+        "file": "patch-golden-default.png",
+        "decoded_pixel_sha256": "65da50f9dd189490b30cd869591347dd57ba40da4742f829f707f329ee4f1201"
+      },
+      "golden_force": {
+        "file": "patch-golden-force.png",
+        "decoded_pixel_sha256": "65da50f9dd189490b30cd869591347dd57ba40da4742f829f707f329ee4f1201"
+      },
+      "golden_forced_size": {
+        "file": "patch-golden-forced-size.png",
+        "decoded_pixel_sha256": "d319df2e4cb127e215a5da38deaaf29b046e533f7365fa51cd19d0b8d7abe8fd"
+      }
+    }
+  },
+  "blend": {
+    "bbox": {
+      "x": 712,
+      "y": 512,
+      "w": 64,
+      "h": 64
+    },
+    "watermark_region_in_crop": {
+      "x": 8,
+      "y": 8,
+      "w": 48,
+      "h": 48
+    },
+    "files": {
+      "watermarked": {
+        "file": "blend-watermarked.png",
+        "decoded_pixel_sha256": "c767ff3e9cb4e1878d8b08e0b6a2b8040f232a7e6e16b0b1edef2fa27fadd4bf"
+      },
+      "original": {
+        "file": "blend-original.png",
+        "decoded_pixel_sha256": "2d52265aefec7607aeeffa6262a8fc65b943d1c33a1ba2958a6239f141b8e8d2"
+      },
+      "golden_force": {
+        "file": "blend-golden-force.png",
+        "decoded_pixel_sha256": "a0592610636519c230712076f3a5d7d902dda7234ba5e37bb6ce20bebe2d44e9"
+      }
+    }
+  }
+}
