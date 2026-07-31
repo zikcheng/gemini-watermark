@@ -6,6 +6,12 @@ on:
   pull_request:
 
 jobs:
+  # Tests across the whole supported Node range, and only the tests. The rest
+  # of `check` -- forbidden-import scan, typecheck, build, package linting --
+  # reads the source or the built artefact, neither of which varies with the
+  # runtime, so running it three times would buy nothing. The behaviour that
+  # *can* differ between Node versions is what executes, so that is what fans
+  # out here.
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -18,11 +24,27 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      # Same gate contributors run locally: forbidden-import scan,
-      # typecheck, tests, build, then the examples typechecked against the
-      # freshly built declarations. Golden and browser tests are excluded by
-      # design -- one needs the out-of-repo reference kit, the other a
-      # downloaded Chromium (see vitest.config.ts).
+      # Golden and browser tests are excluded from the default run by design
+      # -- one needs the out-of-repo reference kit, the other a downloaded
+      # Chromium (see vitest.config.ts).
+      - run: npm run test
+
+  # The same gate contributors run locally, end to end: import scan,
+  # typecheck, tests, build, examples typechecked against the freshly built
+  # declarations, then publint + attw against the packed tarball.
+  #
+  # Node 20 because `engines` says >=20. Running the full gate on the oldest
+  # supported runtime is the point: if some step needs something newer, that
+  # is a packaging bug, and this is where it surfaces rather than at a user.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
       - run: npm run check
 
   # The browser claim, checked rather than argued. `check` proves the

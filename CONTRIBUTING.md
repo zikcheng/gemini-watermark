@@ -34,12 +34,36 @@ equivalence test looks exactly like a passing one.
 
 | Command | Runs | Needs |
 |---|---|---|
-| `npm run check` | forbidden-import scan, typecheck, unit + e2e tests, build, examples typecheck | nothing |
+| `npm run check` | forbidden-import scan, typecheck, unit + e2e tests, build, examples typecheck, package lint (`publint` + `attw`) | nothing |
 | `npm run test:golden` | full-size pixel equivalence vs the reference kit | `$GWT_REFERENCE_DIR` |
 | `npm run test:browser` | the built bundle driven in a real Chromium | `npm run build`, Playwright's Chromium |
 
 `npm run check` is the gate CI runs and the one to run before every commit.
 The other two are additional, not alternatives.
+
+Its last step, `check:package`, runs `publint` and `attw` against the packed
+tarball rather than the working tree, so it sees what a consumer installs.
+
+`attw` runs under `--profile esm-only`, because this package ships one ESM
+build and no CommonJS one. The profile *declares* that shape rather than
+muting a rule: attw still prints the `CJSResolvesToESM` finding and marks it
+`(ignored per resolution)`, and the two resolutions that actually matter for
+an ESM-only package — `node16 (from ESM)` and `bundler` — still have to be
+green. If a CJS build is ever added, drop the profile first and let the tool
+re-audit.
+
+The `exports` map uses a `default` condition rather than `import`. Both look
+identical to publint and attw, but they are not identical to Node: with
+`import` alone, `require('gemini-watermark')` fails with
+`ERR_PACKAGE_PATH_NOT_EXPORTED` ("No exports main defined"), which reads like
+a broken package rather than an ESM-only one. With `default`, Node loads it
+through `require(esm)` and it simply works — from **20.19** in the 20.x line
+(where it was backported) and **22.12** in 22.x, which covers every currently
+supported release. Only the older patches, 20.0–20.18 and 22.0–22.11, report
+`ERR_REQUIRE_ESM`, and that is the accurate error for them. attw's finding
+stays either way — its static analysis predates `require(esm)` — which is why
+the condition is chosen on measured behaviour rather than on the tool's
+output.
 
 ### `npm run test:golden`
 
