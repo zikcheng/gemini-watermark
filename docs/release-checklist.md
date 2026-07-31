@@ -61,7 +61,7 @@ git checkout "$CANDIDATE_SHA"
 ### 3. Set the release version
 
 ```bash
-npm version 0.1.0 --no-git-tag-version   # package.json + package-lock.json
+npm version X.Y.Z --no-git-tag-version   # package.json + package-lock.json
 ```
 
 `--no-git-tag-version` matters: `npm version` tags by default, and tagging is
@@ -80,9 +80,9 @@ npm run check
 ### 5. Pack, and inspect what npm would upload
 
 ```bash
-npm pack                     # -> gemini-watermark-0.1.0.tgz
-tar -tzf gemini-watermark-0.1.0.tgz
-ls -l  gemini-watermark-0.1.0.tgz     # record the size baseline
+npm pack                     # -> gemini-watermark-X.Y.Z.tgz
+tar -tzf gemini-watermark-X.Y.Z.tgz
+ls -l  gemini-watermark-X.Y.Z.tgz     # record the size baseline
 ```
 
 The listing must contain **exactly** these six entries, in any order —
@@ -110,7 +110,7 @@ and computes.
 ```bash
 mkdir /tmp/gw-consumer && cd /tmp/gw-consumer
 npm init -y
-npm i /tmp/gw-release/gemini-watermark-0.1.0.tgz typescript tsx @types/node
+npm i /tmp/gw-release/gemini-watermark-X.Y.Z.tgz typescript tsx @types/node
 ```
 
 `@types/node` is there because the TypeScript smoke calls `console.log`, and
@@ -181,7 +181,7 @@ so the bump has to be made again, in the real working tree:
 
 ```bash
 cd ~/gemini-watermark
-npm version 0.1.0 --no-git-tag-version   # again: no tag
+npm version X.Y.Z --no-git-tag-version   # again: no tag
 npm run check
 git status                                # package.json + package-lock.json, nothing else
 ```
@@ -196,7 +196,7 @@ Only after the rehearsal is clean and the maintainer has said to publish.
 
 ### 1. Pre-flight
 
-- [ ] `CHANGELOG.md` has a `## [0.1.0] - <date>` entry, the date is today,
+- [ ] `CHANGELOG.md` has a `## [X.Y.Z] - <date>` entry, the date is today,
       and `## [Unreleased]` is empty.
 - [ ] `package.json` version equals the CHANGELOG's top released version.
 - [ ] The compare/release links at the bottom of the CHANGELOG point at the
@@ -206,34 +206,43 @@ Only after the rehearsal is clean and the maintainer has said to publish.
 - [ ] Working tree clean, on `main`, up to date with the remote, CI green on
       that commit.
 - [ ] `npm ci && npm run check` passes locally on that exact commit.
-- [ ] `npm whoami` is the account that should own the package.
+- [ ] The trusted publisher is configured on npmjs.com (package Settings →
+      Trusted Publisher: GitHub Actions, this repository, workflow
+      `release.yml`). Without it the workflow's publish step fails with an
+      auth error — by design, there is no token fallback.
 
-### 2. Publish
-
-```bash
-npm publish --access public --provenance
-```
-
-- `--provenance` links the tarball to the workflow run and commit that built
-  it. It requires publishing from CI with `id-token: write` permission; from
-  a laptop it will fail rather than silently publish something unattested.
-  Decide which of the two you are doing before running the command, not
-  after.
-- `prepublishOnly` runs `npm run check` and `prepack` rebuilds `dist/`, so a
-  publish from a dirty or unbuilt tree fails instead of shipping.
-- The package name is not yet taken; the first publish claims it. There is no
-  undo beyond a 72-hour unpublish window, so treat this as irreversible.
-
-### 3. Tag
+### 2. Tag — this is the publish action
 
 ```bash
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
-Tag **after** a successful publish, so the tag never points at a version that
-does not exist on the registry. The tag name must match the CHANGELOG link
-anchor (`v0.1.0`).
+Pushing the tag triggers `.github/workflows/release.yml`, which is the only
+thing that publishes. (This inverts the ordering the manual flow used for
+0.1.0 — publish, then tag — because the tag is now the trigger rather than
+the record.) The tag name must match the CHANGELOG link anchor (`vX.Y.Z`).
+
+### 3. Watch the release workflow
+
+```bash
+gh run watch --exit-status
+```
+
+The workflow refuses a tag that does not name the version in `package.json`
+and the CHANGELOG, re-runs the full `npm run check` gate at the tag, then
+publishes via npm Trusted Publishing (OIDC) — no token exists anywhere, and
+provenance is attached automatically.
+
+If the publish step fails (auth, registry outage), nothing shipped: fix the
+cause, delete and re-push the tag (`git push --delete origin vX.Y.Z`,
+`git tag -d vX.Y.Z`, then tag again). A tag that briefly pointed at an
+unpublished version is a rerun, not an incident.
+
+**Manual fallback** (registry-side OIDC trouble only): `npm publish` from a
+clean checkout of the tag still works and runs the same gates via
+`prepublishOnly`/`prepack`, but ships without provenance — note it in the
+release and return to the workflow path next version.
 
 ### 4. Post-publish smoke
 
@@ -244,7 +253,7 @@ loop.
 ```bash
 mkdir /tmp/gw-published && cd /tmp/gw-published
 npm init -y
-npm i gemini-watermark@0.1.0
+npm i gemini-watermark@X.Y.Z
 node -e "import('gemini-watermark').then(m => console.log(Object.keys(m).sort().join(' ')))"
 ```
 

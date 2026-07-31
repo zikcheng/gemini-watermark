@@ -1,0 +1,61 @@
+# Publishes to npm when a version tag (v*) is pushed.
+#
+# Authentication is npm Trusted Publishing (OIDC): the workflow exchanges a
+# short-lived GitHub identity token for publish authorization, so no npm
+# token exists anywhere in this repository or its secrets. Until the trusted
+# publisher is configured on npmjs.com (package Settings -> Trusted
+# Publisher: GitHub Actions, repository zikcheng/gemini-watermark, workflow
+# release.yml), the publish step fails with an auth error - there is no
+# weaker fallback to fall into.
+#
+# Provenance is generated automatically under trusted publishing: the npm
+# page shows a "built and signed on GitHub Actions" attestation binding the
+# tarball to this exact commit and workflow run.
+#
+# The tag is the trigger, so the workflow makes the tag prove itself before
+# anything ships: it must name the version the tree carries, and the
+# CHANGELOG must have a section for that version. The full local gate then
+# re-runs at the tag even though the PR that produced the commit already
+# passed it - a release verifies, it does not assume.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # the OIDC token npm exchanges for publish authorization
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Node 24 for its bundled npm 11: trusted publishing needs
+          # npm >= 11.5.1. The Node 20 support floor is still guarded by the
+          # check job in ci.yml on every PR; this job's Node version is about
+          # the publish tooling, not the compatibility promise.
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # The runner image's bundled npm can lag; the OIDC flow must be present.
+      - run: npm install -g npm@latest && npm --version
+      - run: npm ci
+      - name: Tag matches package.json and CHANGELOG
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          test "${GITHUB_REF_NAME}" = "v${version}"
+          grep -q "^## \[${version}\]" CHANGELOG.md
+      # Import scan, typecheck, tests, build, publint + attw. npm publish
+      # repeats check via prepublishOnly and rebuilds via prepack - accepted
+      # duplication, same as a manual publish would get.
+      - run: npm run check
+      - run: npm publish
