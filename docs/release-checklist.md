@@ -85,10 +85,13 @@ tar -tzf gemini-watermark-0.1.0.tgz
 ls -l  gemini-watermark-0.1.0.tgz     # record the size baseline
 ```
 
-The listing must contain **exactly**: `package/package.json`,
-`package/LICENSE`, `package/README.md`, `package/dist/index.js`,
-`package/dist/index.d.ts`, `package/dist/index.js.map` — and nothing else.
-No `test/`, no `examples/`, no `tools/`, no `docs/`.
+The listing must contain **exactly** these six entries, in any order —
+`tar` and `sort` do not emit them in the order written here:
+`package/package.json`, `package/LICENSE`, `package/README.md`,
+`package/dist/index.js`, `package/dist/index.d.ts`,
+`package/dist/index.js.map`. Nothing else: no `test/`, no `examples/`, no
+`tools/`, no `docs/`. For reference, 0.1.0 packed to **65 709 bytes**; a
+large move in either direction means something got included or dropped.
 
 `prepack` rebuilds `dist/` as part of `npm pack`, so the tarball cannot
 contain a stale build even if someone packs without building first. (It
@@ -173,8 +176,19 @@ caller's bytes untouched.
 
 ### 7. Land the version bump
 
-The rehearsal's `npm version` happened in the clone. The bump lands in the
-main working tree as its own commit, reviewed like any other.
+The rehearsal's `npm version` happened in the clone, which is thrown away —
+so the bump has to be made again, in the real working tree:
+
+```bash
+cd ~/gemini-watermark
+npm version 0.1.0 --no-git-tag-version   # again: no tag
+npm run check
+git status                                # package.json + package-lock.json, nothing else
+```
+
+Commit it on its own, reviewed like any other change. Do not copy the
+clone's `package.json` across: it carries whatever else the rehearsal
+touched.
 
 ## Release day
 
