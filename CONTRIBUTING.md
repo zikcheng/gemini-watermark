@@ -34,7 +34,7 @@ equivalence test looks exactly like a passing one.
 
 | Command | Runs | Needs |
 |---|---|---|
-| `npm run check` | forbidden-import scan, typecheck, unit + e2e tests, build, examples typecheck, package lint (`publint` + `attw`) | nothing |
+| `npm run check` | forbidden-import scan, typecheck, unit + e2e tests, build, package lint (`publint` + `attw`) | nothing |
 | `npm run test:golden` | full-size pixel equivalence vs the reference kit | `$GWT_REFERENCE_DIR` |
 | `npm run test:browser` | the built bundle driven in a real Chromium | `npm run build`, Playwright's Chromium |
 
@@ -132,7 +132,7 @@ these are the ones that most often produce a silent one-off divergence.
   so a failure inside one is evidence about the port, not about the budget.
 - **`src/` stays environment-agnostic.** No DOM, no Node APIs, no file I/O.
   `npm run check:imports` enforces it textually; environment-specific code
-  belongs in `examples/`.
+  belongs in a dedicated, explicitly-named entry point — never in the core.
 
 ## Regenerating the reference kit
 

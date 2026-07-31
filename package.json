@@ -19,7 +19,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
-    "check": "npm run check:imports && npm run typecheck && npm run test && npm run build && npm run typecheck:examples && npm run check:package",
+    "check": "npm run check:imports && npm run typecheck && npm run test && npm run build && npm run check:package",
     "check:imports": "node tools/check-imports.mjs",
     "check:package": "publint && attw --pack . --profile esm-only",
     "test": "GWT_GOLDEN= GWT_BROWSER= vitest run",
@@ -27,7 +27,6 @@
     "test:golden": "GWT_GOLDEN=1 vitest run test/golden",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "typecheck:examples": "tsc -p examples/browser --noEmit",
     "prepack": "npm run build",
     "prepublishOnly": "npm run check"
   },

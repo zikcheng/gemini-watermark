@@ -111,9 +111,6 @@ if (result.status === 'processed') {
 }
 ```
 
-A complete, runnable version — file picker, per-attempt scores, PNG
-download, no bundler — is in [`examples/browser/`](examples/browser/).
-
 ## API
 
 Full semantics are in [`docs/api-contract.md`](docs/api-contract.md). The
