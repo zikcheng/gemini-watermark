@@ -19,6 +19,34 @@ jobs:
           cache: npm
       - run: npm ci
       # Same gate contributors run locally: forbidden-import scan,
-      # typecheck, tests, build. Golden tests are excluded by design --
-      # they need the out-of-repo reference kit (see vitest.config.ts).
+      # typecheck, tests, build. Golden and browser tests are excluded by
+      # design -- one needs the out-of-repo reference kit, the other a
+      # downloaded Chromium (see vitest.config.ts).
       - run: npm run check
+
+  # The browser claim, checked rather than argued. `check` proves the
+  # *source* never reaches for an environment; this proves the *built*
+  # bundle loads and computes identically in a real Chromium. Separate job
+  # because it needs a ~100 MB browser download the unit tests have no use
+  # for, and one Node version because the thing under test is the artefact,
+  # which does not vary across them.
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # `npx` runs the playwright the lockfile pinned, so the CLI that
+      # downloads the browser and the library that drives it are always the
+      # same version. Chromium only: the package promises browsers as a
+      # class, and the port has no engine-specific code that a second
+      # engine would exercise.
+      - run: npx playwright install chromium --with-deps
+      # The smoke test loads dist/, so it has to exist. It throws rather
+      # than skips when it does not, so a forgotten build fails this job
+      # instead of passing an empty one.
+      - run: npm run build
+      - run: npm run test:browser
