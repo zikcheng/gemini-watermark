@@ -30,8 +30,7 @@ jobs:
       - run: npm run test
 
   # The same gate contributors run locally, end to end: import scan,
-  # typecheck, tests, build, examples typechecked against the freshly built
-  # declarations, then publint + attw against the packed tarball.
+  # typecheck, tests, build, then publint + attw against the packed tarball.
   #
   # Node 20 because `engines` says >=20. Running the full gate on the oldest
   # supported runtime is the point: if some step needs something newer, that

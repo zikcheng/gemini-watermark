@@ -34,8 +34,8 @@ below carry the required semantics.
 Core rule: `src/` is **environment-agnostic**. No DOM, no Node APIs, no
 `canvas`, no file I/O — pixels enter and leave as `ImageBuffer`
 (typed array + width/height/channels, defined in `src/types.ts`). Anything
-environment-specific (canvas decode, file loading) belongs in examples or a
-future explicitly-named entry point, never in the core.
+environment-specific (canvas decode, file loading) belongs in a future
+explicitly-named entry point, never in the core.
 
 | Module | Ports (upstream function, file) | Status |
 |---|---|---|

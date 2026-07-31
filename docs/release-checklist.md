@@ -89,8 +89,8 @@ The listing must contain **exactly** these six entries, in any order —
 `tar` and `sort` do not emit them in the order written here:
 `package/package.json`, `package/LICENSE`, `package/README.md`,
 `package/dist/index.js`, `package/dist/index.d.ts`,
-`package/dist/index.js.map`. Nothing else: no `test/`, no `examples/`, no
-`tools/`, no `docs/`. For reference, 0.1.0 packed to **65 709 bytes**; a
+`package/dist/index.js.map`. Nothing else: no `test/`, no `tools/`, no
+`docs/`. For reference, 0.1.0 packed to **65 709 bytes**; a
 large move in either direction means something got included or dropped.
 
 `prepack` rebuilds `dist/` as part of `npm pack`, so the tarball cannot

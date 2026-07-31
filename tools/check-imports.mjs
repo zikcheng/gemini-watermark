@@ -111,7 +111,7 @@ if (violations.length > 0) {
     '\nsrc/ must stay environment-agnostic: no Node APIs, no DOM, no globals.',
   );
   console.error(
-    'Move environment-specific code to examples/ or a dedicated entry point.',
+    'Move environment-specific code to a dedicated entry point.',
   );
   process.exit(1);
 }
