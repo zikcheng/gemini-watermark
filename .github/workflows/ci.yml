@@ -19,7 +19,8 @@ jobs:
           cache: npm
       - run: npm ci
       # Same gate contributors run locally: forbidden-import scan,
-      # typecheck, tests, build. Golden and browser tests are excluded by
+      # typecheck, tests, build, then the examples typechecked against the
+      # freshly built declarations. Golden and browser tests are excluded by
       # design -- one needs the out-of-repo reference kit, the other a
       # downloaded Chromium (see vitest.config.ts).
       - run: npm run check
