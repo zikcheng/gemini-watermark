@@ -12,6 +12,20 @@ the port was wrong about upstream.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-31
+
+Documentation-only patch; no behavior change.
+
+### Changed
+
+- README no longer carries the pre-release banner and the install
+  placeholder — the package is on npm, `npm install gemini-watermark` is
+  real. (The README ships inside the package, which is what makes this a
+  release.)
+- The browser example page and the retired planning document referenced by
+  the 0.1.0 README are gone from the repository; the README's inline usage
+  samples and compatibility matrix are the reference now.
+
 ## [0.1.0] - 2026-07-31
 
 First release. A faithful TypeScript port of
@@ -98,5 +112,6 @@ upstream-equivalent.
   fixtures processed by the reference binary, not against collected real
   Gemini output.
 
-[Unreleased]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/zikcheng/gemini-watermark/releases/tag/v0.1.0

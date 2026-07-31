@@ -1,7 +1,5 @@
 # gemini-watermark
 
-> ⚠️ **Work in progress** — not yet published to npm.
-
 Detect, remove, and add Gemini visible image watermarks via deterministic
 **reverse alpha blending**. A faithful TypeScript port of
 [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool) by
@@ -34,10 +32,8 @@ mathematically. See the original author's write-up:
 
 ## Install
 
-Not published yet. Until it is:
-
 ```bash
-npm install gemini-watermark   # placeholder — the name is not on npm
+npm install gemini-watermark
 ```
 
 ## Usage
@@ -327,11 +323,10 @@ port must also skip.
 | Guided multi-scale detection (snap) | ❌ M7 (not in v0.1.0) |
 | Soft inpaint residual cleanup | ❌ M7 (not in v0.1.0) |
 
-Everything v0.1.0 promises is implemented: `detectWatermark` runs the three
-weighted stages with the circuit breaker, the spatial rescue and the V2
-small snap, and `processImage` wraps them in the V2→V1 fallback, the
-confidence gate and the removal itself. Packaging is done too; what is left
-before a first release is a release rehearsal, not behavior.
+Everything v0.1.0 promises is implemented and shipped: `detectWatermark`
+runs the three weighted stages with the circuit breaker, the spatial rescue
+and the V2 small snap, and `processImage` wraps them in the V2→V1 fallback,
+the confidence gate and the removal itself.
 
 Underneath the detector are primitives checked against measured output of
 the pinned OpenCV rather than against a textbook formula: grayscale, Sobel
