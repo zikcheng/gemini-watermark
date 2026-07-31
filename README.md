@@ -333,8 +333,8 @@ port must also skip.
 Everything v0.1.0 promises is implemented: `detectWatermark` runs the three
 weighted stages with the circuit breaker, the spatial rescue and the V2
 small snap, and `processImage` wraps them in the V2→V1 fallback, the
-confidence gate and the removal itself. What is left before a first release
-is packaging and a release rehearsal, not behavior.
+confidence gate and the removal itself. Packaging is done too; what is left
+before a first release is a release rehearsal, not behavior.
 
 Underneath the detector are primitives checked against measured output of
 the pinned OpenCV rather than against a textbook formula: grayscale, Sobel
