@@ -28,6 +28,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "typecheck:examples": "tsc -p examples/browser --noEmit",
+    "prepack": "npm run build",
     "prepublishOnly": "npm run check"
   },
   "repository": {
