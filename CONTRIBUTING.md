@@ -178,6 +178,14 @@ upstream behavior that the docs describe differently — go in
 `docs/plan/DEVIATIONS.md` with symptom, evidence and disposition. That file
 is where "we looked, and this is what is true" lives.
 
+## Releasing
+
+[`docs/release-checklist.md`](docs/release-checklist.md) is the procedure:
+a rehearsal that packs the candidate in a temporary clone and installs the
+tarball into throwaway ESM and TypeScript consumers, then the release-day
+steps. Read it before touching anything release-shaped — it also explains
+why `npx attw` must never run in a directory without installed dependencies.
+
 ## Pull request checklist
 
 - [ ] `npm run check` passes.

@@ -1,6 +1,6 @@
 {
   "name": "gemini-watermark",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Detect, remove, and add Gemini visible image watermarks via deterministic reverse alpha blending. Faithful TypeScript port of GeminiWatermarkTool. Zero dependencies, runs in browsers and Node.",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,6 +28,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "typecheck:examples": "tsc -p examples/browser --noEmit",
+    "prepack": "npm run build",
     "prepublishOnly": "npm run check"
   },
   "repository": {

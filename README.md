@@ -355,6 +355,9 @@ so the C++ reference is the authority on behavior, `test/data/` is
 regenerated rather than edited, and tolerances are never loosened to make a
 test pass.
 
+Version history, including which upstream release each version tracks, is in
+[CHANGELOG.md](CHANGELOG.md).
+
 ## License & attribution
 
 MIT. The algorithm, calibrated alpha-map data, and position formulas are
