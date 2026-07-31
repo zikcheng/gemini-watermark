@@ -6,7 +6,7 @@
  * would not fit in the repository. Handing a crop to the engine changes
  * every geometry decision, so each one is placed back into a zero-filled
  * buffer of the original size first — the "patch + reconstruction" format
- * from PLAN.md, implemented in `reconstruct.ts`.
+ * implemented in `reconstruct.ts`.
  *
  * Which roles a case carries is meaningful rather than incidental: a
  * skipped default run wrote no output, so it has no `golden_default`; the

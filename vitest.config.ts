@@ -9,7 +9,7 @@ import { configDefaults, defineConfig } from 'vitest/config';
  *
  * **Golden** tests read the full-size reference kit from
  * `$GWT_REFERENCE_DIR`, which deliberately lives outside the repository
- * (PLAN.md: keep large binaries out). **Browser** tests need a built
+ * (large binaries stay out of the repo). **Browser** tests need a built
  * `dist/` and a downloaded Chromium, neither of which a contributor should
  * have to provide just to run the unit tests.
  *
@@ -23,7 +23,7 @@ import { configDefaults, defineConfig } from 'vitest/config';
  *
  * Note: both scripts set their variable with POSIX inline-env syntax, which
  * cmd.exe does not understand. Supported platforms are macOS (dev) and
- * ubuntu (CI) per PLAN.md, and adding cross-env for scripts CI runs on
+ * ubuntu (CI), and adding cross-env for scripts CI runs on
  * ubuntu is not worth a dependency. On Windows, set the variable manually
  * and invoke vitest directly.
  */

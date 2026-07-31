@@ -35,7 +35,7 @@ export interface RegionDiff {
 /**
  * Split the difference between two images by a rectangle.
  *
- * PLAN.md's pixel budget is asymmetric on purpose: inside the watermark
+ * CLAUDE.md's pixel budget is asymmetric on purpose: inside the watermark
  * region the port may differ by 1 (float width against the reference's
  * float32, DEVIATIONS D4), outside it must not differ at all — a single
  * byte there means the region arithmetic wrote where it should not have.
