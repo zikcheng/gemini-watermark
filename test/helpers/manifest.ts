@@ -70,9 +70,26 @@ export interface ManifestCase {
   runs: { default: ManifestRun; force?: ManifestRun; forced_size?: ManifestRun };
 }
 
+/**
+ * Which downstream suite a case is applicable to (`eligible_for` in the
+ * manifest, set by the kit when it generated the case).
+ */
+export type EligibleTag =
+  | 'detection'
+  | 'default_e2e'
+  | 'force_remove'
+  | 'add_v1'
+  | 'add_v2_ext'
+  | 'forced_size';
+
+/** The cases carrying a given tag, in manifest order. */
+export function casesFor(tag: EligibleTag): ManifestCase[] {
+  return (manifest.cases as ManifestCase[]).filter((c) => c.eligible_for.includes(tag));
+}
+
 /** The cases tagged for detection, in manifest order. */
 export function detectionCases(): ManifestCase[] {
-  return (manifest.cases as ManifestCase[]).filter((c) => c.eligible_for.includes('detection'));
+  return casesFor('detection');
 }
 
 /**

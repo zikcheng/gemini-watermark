@@ -8,7 +8,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     }
   },
   "files": [
@@ -19,12 +19,15 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
-    "check": "npm run check:imports && npm run typecheck && npm run test && npm run build",
+    "check": "npm run check:imports && npm run typecheck && npm run test && npm run build && npm run typecheck:examples && npm run check:package",
     "check:imports": "node tools/check-imports.mjs",
-    "test": "vitest run",
+    "check:package": "publint && attw --pack . --profile esm-only",
+    "test": "GWT_GOLDEN= GWT_BROWSER= vitest run",
+    "test:browser": "GWT_BROWSER=1 vitest run test/browser",
     "test:golden": "GWT_GOLDEN=1 vitest run test/golden",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "typecheck:examples": "tsc -p examples/browser --noEmit",
     "prepublishOnly": "npm run check"
   },
   "repository": {
@@ -46,7 +49,10 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@types/node": "24.13.3",
+    "playwright": "^1.62.1",
+    "publint": "^0.3.22",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"

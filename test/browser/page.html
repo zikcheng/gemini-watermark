@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>gemini-watermark browser smoke</title>
+  </head>
+  <body>
+    <p>
+      Loaded by <code>test/browser/smoke.test.ts</code> under Playwright. Nothing here is
+      interactive; the driver calls <code>window.runCase</code> and compares what comes back
+      with the values Node computed from the same bytes.
+    </p>
+
+    <script type="module">
+      // The published entry point, exactly as a consumer would reach it:
+      // a bare ESM import of the built bundle, no bundler, no shims. If the
+      // build ever emitted a Node built-in or a bare specifier, this line
+      // is where it stops being a theory.
+      import { processImage } from '/dist/index.js';
+
+      async function sha256Hex(bytes) {
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        return Array.from(new Uint8Array(digest))
+          .map((byte) => byte.toString(16).padStart(2, '0'))
+          .join('');
+      }
+
+      /**
+       * Run one case and report what happened.
+       *
+       * Pixels arrive as raw RGB bytes over fetch rather than through
+       * `createImageBitmap`: decoding in the browser would drag colour
+       * management and the platform PNG decoder into a test about whether
+       * the bundle runs at all, and any difference there would be
+       * indistinguishable from a difference in this library.
+       */
+      window.runCase = async (name, width, height, channels) => {
+        const response = await fetch(`/__pixels/${name}.bin`);
+        if (!response.ok) throw new Error(`fetch ${name}: HTTP ${response.status}`);
+        const data = new Uint8Array(await response.arrayBuffer());
+
+        const before = await sha256Hex(data.slice());
+        // Shape comes from the driver rather than being written in here: the
+        // page must describe the buffer Node reconstructed, not a guess about
+        // it. A case with an alpha channel would otherwise be read as RGB and
+        // fail somewhere far from the cause.
+        const image = { data, width, height, channels };
+        const result = processImage(image);
+
+        return {
+          bytes: data.length,
+          before,
+          // `processImage` mutates in place, so this hashes the same
+          // buffer after the call — which is also what makes `before ===
+          // after` a real assertion on the skip path.
+          after: await sha256Hex(data),
+          status: result.status,
+          confidence: result.confidence,
+          variant: result.variant ?? null,
+          size: result.size ?? null,
+          region: result.region ?? null,
+          attempts: result.attempts.map((attempt) => attempt.variant),
+        };
+      };
+
+      window.__ready = true;
+    </script>
+  </body>
+</html>
