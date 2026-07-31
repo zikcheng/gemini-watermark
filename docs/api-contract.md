@@ -247,5 +247,5 @@ score exactly `0.000`. M4 commit 3 must pin it.
 ## Out of scope for v0.1.0
 
 Region and snap search, Soft Inpaint residual cleanup, NS/TELEA/AI
-denoising, and all file I/O. The compatibility matrix in `PLAN.md` is the
+denoising, and all file I/O. The compatibility matrix in the README is the
 authority on what this version promises.

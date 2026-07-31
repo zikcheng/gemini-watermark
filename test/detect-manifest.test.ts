@@ -4,7 +4,7 @@
  * This is the milestone's point: the binary's own `-v` log is the oracle,
  * and the port has to reach the same verdicts from the same pixels.
  * Decisions are exact — skip or process, which variant, which region, the
- * position removal happened at. Scores get PLAN.md's 2e-3, which is simply
+ * position removal happened at. Scores get CLAUDE.md's 2e-3, which is simply
  * the precision the log was printed at.
  *
  * Images are rebuilt from the committed detection patches, so this runs in

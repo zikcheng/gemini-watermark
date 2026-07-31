@@ -59,8 +59,8 @@ function forcedVariant(entry: ManifestCase): 'V1' | 'V2' {
 
 /**
  * Inside the region the two may differ by one level per channel — the
- * float-width allowance from PLAN.md — and outside it they may not differ
- * at all, since neither side should have written there.
+ * float-width allowance of CLAUDE.md rule 4 — and outside it they may not
+ * differ at all, since neither side should have written there.
  */
 function expectMatchesGolden(
   actual: ImageBuffer,

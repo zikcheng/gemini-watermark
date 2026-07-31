@@ -6,8 +6,8 @@ import { getWatermarkConfig } from '../src/position.js';
 import { resizeArea, resizeAreaIntegerFactor, resizeBilinear } from '../src/resize.js';
 import { DumpReader, withinDualTolerance } from './helpers/imageops-dump.js';
 
-const PLAN_ABS_TOL = 1e-6;
-const PLAN_REL_TOL = 1e-5;
+const DUMP_ABS_TOL = 1e-6;
+const DUMP_REL_TOL = 1e-5;
 
 const dump = new DumpReader('resize-alpha');
 const source = dump.float32('v2-96-alpha');
@@ -31,7 +31,7 @@ function compare(
     const want = expected[i] ?? 0;
     const got = actual[i] ?? 0;
     worst = Math.max(worst, Math.abs(got - want));
-    if (!withinDualTolerance(got, want, PLAN_ABS_TOL, PLAN_REL_TOL)) outside += 1;
+    if (!withinDualTolerance(got, want, DUMP_ABS_TOL, DUMP_REL_TOL)) outside += 1;
     if (got === want) exact += 1;
   }
   return { worst, outside, exact };

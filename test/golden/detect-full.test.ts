@@ -38,7 +38,7 @@ const kit = requireReferenceDir();
 const cases = detectionCases();
 
 /**
- * The port has no JPEG decoder by design (PLAN.md: the kit emits
+ * The port has no JPEG decoder by design (the kit emits
  * decode-normalized PNGs, the TS side never decodes JPEG), and this is the
  * one fixture whose input is a `.jpg`. Its committed patch was cut from
  * cv2-decoded pixels, so CI covers its decisions — the same arrangement
@@ -112,7 +112,7 @@ describe('processImage on full images, against golden/default', () => {
         golden,
         region as NonNullable<typeof region>,
       );
-      // Outside the removal region nothing may move at all; inside, PLAN.md
+      // Outside the removal region nothing may move at all; inside, CLAUDE.md
       // allows the ±1 the float-width difference can cost (DEVIATIONS D4).
       expect(outsideDiffering, `${entry.name} channels changed outside the region`).toBe(0);
       expect(insideMax, `${entry.name} max deviation inside the region`).toBeLessThanOrEqual(1);

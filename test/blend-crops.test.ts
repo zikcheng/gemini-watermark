@@ -19,7 +19,7 @@ import manifest from './data/manifest.json';
  * repeats the same assertions on full-size images from the out-of-repo kit.
  *
  * The comparison is TS output vs the binary's own output for the same
- * input, so the tolerance is the quantization contract from PLAN.md:
+ * input, so the tolerance is the quantization contract from CLAUDE.md:
  * inside the watermark region the two may differ by at most one level per
  * channel; everywhere else they must be byte-identical, since neither side
  * should have touched those pixels at all.

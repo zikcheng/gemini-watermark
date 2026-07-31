@@ -27,7 +27,7 @@ import type {
 import manifest from '../data/manifest.json';
 
 /**
- * PLAN.md's budget for manifest scores: `absErr <= 2e-3`, no relative term.
+ * CLAUDE.md's budget for manifest scores: `absErr <= 2e-3`, no relative term.
  * It is not a fudge factor but the log's precision — `{:.3f}` printing
  * rounds to 5e-4, and a circuit-breaker confidence is reconstructed from an
  * already-rounded spatial (DEVIATIONS D2), which widens it further.
@@ -128,7 +128,7 @@ export function wasProcessed(entry: ManifestCase): boolean {
 /**
  * `absErr <= 2e-3` against the manifest, written out rather than through
  * `toBeCloseTo` — which measures decimal places and would accept the wrong
- * things at these magnitudes (PLAN.md tolerance principles).
+ * things at these magnitudes (CLAUDE.md testing conventions).
  */
 export function expectScoreMatches(actual: number, expected: number, what: string): void {
   expect(

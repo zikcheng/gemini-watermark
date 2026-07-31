@@ -32,7 +32,7 @@ const BIN = join(kit, 'bin', 'gwt-mini');
 const OUT_DIR = join(kit, 'out-e2e');
 
 /**
- * The port has no JPEG decoder by design (PLAN.md: the kit emits
+ * The port has no JPEG decoder by design (the kit emits
  * decode-normalized PNGs, the TS side never decodes JPEG), and this is the
  * only fixture whose input is a `.jpg`. Its committed patch was cut from
  * cv2-decoded pixels, so CI covers it — the arrangement

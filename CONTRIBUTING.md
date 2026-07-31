@@ -9,9 +9,9 @@ test that fails is assumed to have caught a porting mistake until proven
 otherwise.
 
 That rule is the reason for most of what follows. [CLAUDE.md](CLAUDE.md) is
-the standards layer (numeric semantics, code style, module plan);
-[PLAN.md](PLAN.md) defines scope, tolerances and the milestone sequence.
-This file is the practical how-to.
+the standards layer (numeric semantics, tolerance budgets, code style,
+module plan); the scope boundary is the compatibility matrix in the
+[README](README.md). This file is the practical how-to.
 
 ## Development environment
 
@@ -124,7 +124,7 @@ these are the ones that most often produce a silent one-off divergence.
 - **Decisions are exact; only scores and pixels have tolerances.** Detect
   vs skip, circuit breaker, variant, region and status must match exactly.
   Scores compare as `absErr ≤ absTol + relTol·|ref|` against the budgets in
-  PLAN.md; restored pixels allow ±1 per channel, and everything the removal
+  CLAUDE.md; restored pixels allow ±1 per channel, and everything the removal
   should not touch is byte-exact. **Never use `toBeCloseTo`** — its
   decimal-digit semantics are not the contract.
 - **Never loosen a tolerance to make a test pass.** That is the one change
@@ -214,7 +214,8 @@ between "the detector never saw it" (circuit breaker) and "it saw it and
 scored it below the gate".
 
 If the image can be shared, say so; the fixture corpus is entirely
-synthetic, and real samples are a known gap (PLAN.md risk table).
+synthetic, and real samples are a known gap (see *Limitations* in the
+README).
 
 [GeminiWatermarkTool]: https://github.com/allenk/GeminiWatermarkTool
 [Conventional Commits]: https://www.conventionalcommits.org/

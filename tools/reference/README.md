@@ -116,7 +116,8 @@ SHA256/version check still applies.
 reading it:
 
 - **Scores** parsed directly from the `-v` log carry exactly **3 decimal
-  places**. Compare them with the 2e-3 budget from PLAN.md, never with
+  places**. Compare them with the 2e-3 budget from CLAUDE.md's testing
+  conventions, never with
   `toBeCloseTo`. They are `TM_CCOEFF_NORMED` correlations over [-1, 1] —
   negative values are normal on clean images. The one exception is a
   circuit-breaker detection's `confidence`: the breaker log line prints

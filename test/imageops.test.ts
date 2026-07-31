@@ -27,16 +27,16 @@ import { decodePng } from './helpers/png.js';
  * cv2's BGR layout, so the test reverses each pixel's channels to get the
  * RGB buffer this port works in.
  */
-const PLAN_ABS_TOL = 1e-6;
-const PLAN_REL_TOL = 1e-5;
+const DUMP_ABS_TOL = 1e-6;
+const DUMP_REL_TOL = 1e-5;
 
-/** `absErr <= 1e-6 + 1e-5 * |expected|` — PLAN.md, cv2-dump operators. */
-function expectWithinPlanTolerance(actual: number, expected: number, what: string): void {
-  const ok = withinDualTolerance(actual, expected, PLAN_ABS_TOL, PLAN_REL_TOL);
+/** `absErr <= 1e-6 + 1e-5 * |expected|` — CLAUDE.md testing conventions, cv2-dump operators. */
+function expectWithinDumpTolerance(actual: number, expected: number, what: string): void {
+  const ok = withinDualTolerance(actual, expected, DUMP_ABS_TOL, DUMP_REL_TOL);
   expect(
     ok,
     `${what}: |${actual} - ${expected}| = ${Math.abs(actual - expected)} exceeds ` +
-      `${PLAN_ABS_TOL} + ${PLAN_REL_TOL}*|expected|`,
+      `${DUMP_ABS_TOL} + ${DUMP_REL_TOL}*|expected|`,
   ).toBe(true);
 }
 
@@ -218,8 +218,8 @@ describe('meanStdDev vs cv2', () => {
       }
 
       const actual = meanStdDev(data);
-      expectWithinPlanTolerance(actual.mean, sample.mean, `${sample.label} mean`);
-      expectWithinPlanTolerance(actual.std, sample.stddev, `${sample.label} std`);
+      expectWithinDumpTolerance(actual.mean, sample.mean, `${sample.label} mean`);
+      expectWithinDumpTolerance(actual.std, sample.stddev, `${sample.label} std`);
     },
   );
 
@@ -274,7 +274,7 @@ describe('sobelMagnitude vs cv2 Sobel + magnitude', () => {
       for (let i = 0; i < expected.data.length; i += 1) {
         const want = expected.data[i] ?? 0;
         const got = actual[i] ?? 0;
-        if (!withinDualTolerance(got, want, PLAN_ABS_TOL, PLAN_REL_TOL)) {
+        if (!withinDualTolerance(got, want, DUMP_ABS_TOL, DUMP_REL_TOL)) {
           const error = Math.abs(got - want);
           if (error > worst) {
             worst = error;

@@ -124,7 +124,7 @@ export function casePath(relative: string): string {
 }
 
 /**
- * PLAN.md's dual tolerance for cv2-dump comparisons:
+ * CLAUDE.md's dual tolerance for cv2-dump comparisons:
  * `absErr <= absTol + relTol * |expected|`.
  *
  * Written out instead of `toBeCloseTo`, which measures decimal places and

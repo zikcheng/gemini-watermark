@@ -8,7 +8,7 @@
  * analysed as a 115x151 image and land nowhere near the watermark. Tests
  * therefore rebuild a zero-filled buffer of the original size and place the
  * patch back at its recorded origin — the "patch + reconstruction" data
- * format described in PLAN.md.
+ * format.
  *
  * The zero fill is deliberate: pixels outside the patch are not part of any
  * oracle, and leaving them black makes an accidental dependency on them
