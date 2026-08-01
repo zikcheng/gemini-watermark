@@ -34,6 +34,7 @@
     "type": "git",
     "url": "git+https://github.com/zikcheng/gemini-watermark.git"
   },
+  "homepage": "https://gemini-watermark.org",
   "keywords": [
     "gemini",
     "watermark",

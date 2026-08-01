@@ -10,6 +10,8 @@ APIs and no file I/O, so it works wherever you can hand it a pixel buffer.
 Browsers and **Node ≥ 20** are the environments CI tests, and the only two
 the package promises.
 
+Try it online at [gemini-watermark.org](https://gemini-watermark.org).
+
 ## How it works
 
 Gemini applies its visible watermark with standard alpha blending against a
