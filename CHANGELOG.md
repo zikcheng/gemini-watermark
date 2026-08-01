@@ -12,6 +12,16 @@ the port was wrong about upstream.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-02
+
+Documentation-only patch; no behavior change.
+
+### Added
+
+- `homepage` in package.json and a "try it online" link in the README, both
+  pointing at [gemini-watermark.org](https://gemini-watermark.org). (The
+  README ships inside the package, which is what makes this a release.)
+
 ## [0.1.1] - 2026-07-31
 
 Documentation-only patch; no behavior change.
@@ -112,6 +122,7 @@ upstream-equivalent.
   fixtures processed by the reference binary, not against collected real
   Gemini output.
 
-[Unreleased]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/zikcheng/gemini-watermark/releases/tag/v0.1.0
