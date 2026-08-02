@@ -228,6 +228,64 @@ channel. That proves the forward blend inverts the reverse one; it does
 
 `mode: 'add'` with `variant: 'V1'` (the default) *is* upstream-equivalent.
 
+## Extension: Veo video removal
+
+Added after v0.1.2 as a new capability (the contract's "new capabilities
+belong to a later version" clause). No upstream counterpart exists;
+`docs/plan/DEVIATIONS.md` D8 records the measurements this rests on.
+
+Exports: `VIDEO_LOGO_SIZE` (48), `VIDEO_MARGIN` (96),
+`getVideoWatermarkConfig`, `createVideoCalibrator`,
+`removeVideoWatermark`, `processVideo`, and types
+`VideoWatermarkConfig`, `VideoCalibrator`, `VideoCalibration`,
+`VideoCalibrationSource`, `VideoRemoveOptions`, `ProcessVideoOptions`,
+`ProcessVideoResult`.
+
+Semantics:
+
+- `getVideoWatermarkConfig(width, height)` is pure geometry: the 48px
+  logo box inset 96px from the right and bottom edges, plus the 140px
+  calibration window centered on it. Throws `RangeError` when either
+  dimension is below 190 (the window would leave the frame) or
+  non-integral.
+- `createVideoCalibrator(width, height).addFrame(frame)` accepts RGB and
+  RGBA `ImageBuffer`s of exactly those dimensions and accumulates the
+  calibration window's temporal sums; it never retains the frame.
+  `calibrate()` estimates the per-video alpha map from the temporal
+  mean, and reports how via `source`: `'estimated'` when the estimate
+  correlates with the V1-48 source map at NCC ≥ 0.98, `'template'` when
+  it fell back to that map scaled by the least-squares gain. The
+  fallback is itself gated: below NCC 0.5 — or without a positive
+  fitted gain — nothing watermark-shaped is in the corner, and
+  `calibrate()` throws `RangeError` rather than hand back an alpha that
+  would blend a ghost sparkle *into* a clean video. It also throws
+  `RangeError` with no frames.
+- `removeVideoWatermark(frame, calibration, options?)` reverse-blends in
+  place via the same arithmetic as `removeWatermarkRegion` (alpha-skip
+  threshold, MAX_ALPHA clamp, A channel untouched) and throws
+  `RangeError` when the frame's geometry disagrees with the
+  calibration's. By default it then smooths the sparkle's thin edge band
+  — the codec noise there is amplified by `1/(1−alpha)` — touching only
+  the logo box grown by 4px; `{ smoothEdges: false }` yields the pure
+  algebraic inversion, whose writes stay inside the logo box exactly.
+- `processVideo(frames, options?)` is the one-call form for a frame
+  sequence held in memory, shaped after `processImage`: it calibrates
+  over all frames, then either reverse-blends every frame in place
+  (`'processed'`) or — when nothing watermark-shaped is in the corner —
+  returns `'skipped'` with every frame byte-identical. No pixel is
+  written until calibration has succeeded, so a throw (empty sequence,
+  mismatched dimensions) also leaves every frame untouched. Skip is the
+  clean-video answer here; the streaming calibrator keeps its
+  `RangeError`, which the one-call form absorbs into the status.
+- Determinism: same frames in, same calibration and pixels out. There is
+  no randomness and no time dependence.
+
+What is **not** promised: geometry above/below 720p-class frames (the
+gate exists precisely because only 720p was measured), any file or
+container handling, and the numeric identity of `templateNcc`/
+`templateGain` across library versions — they are diagnostics, not
+oracle-checked scores.
+
 ## Implementation notes (not contract)
 
 Behaviour that the contract does not promise but the port must still get

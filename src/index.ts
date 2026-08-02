@@ -43,3 +43,24 @@ export {
   getWatermarkSize,
   getWatermarkTopLeft,
 } from './position.js';
+
+// Video support is an extension beyond the upstream port — see the
+// provenance notes in src/video.ts and docs/plan/DEVIATIONS.md D8.
+export type {
+  ProcessVideoOptions,
+  ProcessVideoResult,
+  VideoCalibration,
+  VideoCalibrationSource,
+  VideoCalibrator,
+  VideoRemoveOptions,
+  VideoWatermarkConfig,
+} from './video.js';
+
+export {
+  VIDEO_LOGO_SIZE,
+  VIDEO_MARGIN,
+  createVideoCalibrator,
+  getVideoWatermarkConfig,
+  processVideo,
+  removeVideoWatermark,
+} from './video.js';

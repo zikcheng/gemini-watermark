@@ -38,14 +38,20 @@ describe('public exports', () => {
     // Types are erased at runtime, so this covers functions and values
     // only. The type-level assertions below cover the rest.
     expect(Object.keys(api).sort()).toEqual([
+      'VIDEO_LOGO_SIZE',
+      'VIDEO_MARGIN',
       'addWatermarkRegion',
+      'createVideoCalibrator',
       'detectWatermark',
       'getSourceAlphaMap',
+      'getVideoWatermarkConfig',
       'getWatermarkConfig',
       'getWatermarkSize',
       'getWatermarkTopLeft',
       'passesThreshold',
       'processImage',
+      'processVideo',
+      'removeVideoWatermark',
       'removeWatermarkRegion',
     ]);
   });

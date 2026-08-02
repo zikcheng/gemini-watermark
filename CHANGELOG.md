@@ -12,6 +12,27 @@ the port was wrong about upstream.
 
 ## [Unreleased]
 
+### Added
+
+- **Veo video watermark removal** — an extension beyond the upstream
+  port (upstream v0.3.2 has no video path; measurements and rationale in
+  `docs/plan/DEVIATIONS.md` D8). New exports `getVideoWatermarkConfig`,
+  `createVideoCalibrator`, `removeVideoWatermark`, the
+  `VIDEO_LOGO_SIZE`/`VIDEO_MARGIN` constants and their types: a
+  two-pass, self-calibrating pipeline that estimates the per-video
+  alpha map from temporal statistics (biharmonic background inpainting
+  of the temporal mean), validates it against the V1-48 template, and
+  reverse-blends every frame, then smooths the sparkle's edge band
+  where the division amplifies codec noise (`smoothEdges: false` opts
+  out). The template fallback's opacity is calibrated by a 1-D search
+  that zeroes the sparkle outline's edge energy. Every algorithmic
+  choice was raced against alternatives on the sample videos — the
+  variant table lives in the D8 addendum. `processVideo(frames)` is the
+  one-call form for in-memory sequences, with the image pipeline's
+  processed/skipped semantics; the calibrator pair remains the
+  streaming form. An ffmpeg-driven CLI lives in
+  `tools/video/remove-veo-video.mjs`, outside the published package.
+
 ## [0.1.2] - 2026-08-02
 
 Documentation-only patch; no behavior change.
