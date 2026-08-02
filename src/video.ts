@@ -68,9 +68,12 @@ const SUPPORT_DILATE_RADIUS = 4;
 
 /**
  * Alpha at or below this is background residue from the harmonic fill,
- * zeroed so removal leaves those pixels untouched. Chosen above the
- * observed fill noise (≤0.03 on busy backgrounds, ~0.008 elsewhere) —
- * the sparkle fringe it also drops contributes under one output level.
+ * zeroed so removal leaves those pixels untouched. Set at the fill-noise
+ * level of quiet backgrounds (~0.008); busy backgrounds can leave
+ * residue up to ~0.03 that passes this floor, but only where the
+ * refined support mask kept the pixel at all, and at that amplitude
+ * removal moves a channel by at most a couple of levels. The sparkle
+ * fringe the floor drops contributes under one output level.
  */
 const ALPHA_NOISE_FLOOR = 0.008;
 
@@ -83,6 +86,15 @@ const ALPHA_CEILING = 0.98;
  * background degrades the fill and lands well below this.
  */
 const TEMPLATE_NCC_GATE = 0.98;
+
+/**
+ * NCC below which the template fallback is refused too, because nothing
+ * watermark-shaped is in the corner and "falling back" would inject a
+ * ghost sparkle into a clean video. Synthetic probes separate cleanly:
+ * a watermarked-but-static scene still correlates at ~0.75, while clean
+ * corners (moving, static-textured, static-smooth) measure ≤ 0.10.
+ */
+const TEMPLATE_NCC_FLOOR = 0.5;
 
 /**
  * Harmonic fill iteration cap and convergence threshold. Gauss–Seidel on
@@ -253,6 +265,11 @@ function keepLargestComponent(mask: Uint8Array, edge: number): void {
     }
     nextLabel += 1;
   }
+  // An all-zero mask has no components: bestLabel is still -1, and so is
+  // every unvisited pixel's label, so the loop below would invert the
+  // mask to all-ones — flooding the fill with an empty boundary and
+  // turning a clean video into a ghost-sparkle injection. Leave it empty.
+  if (bestLabel < 0) return;
   for (let i = 0; i < mask.length; i += 1) {
     mask[i] = labels[i] === bestLabel ? 1 : 0;
   }
@@ -456,12 +473,11 @@ export function createVideoCalibrator(width: number, height: number): VideoCalib
       let alpha = estimate;
       let source: VideoCalibrationSource = 'estimated';
       if (ncc < TEMPLATE_NCC_GATE) {
-        if (!(gain > 0)) {
+        if (ncc < TEMPLATE_NCC_FLOOR || !(gain > 0)) {
           throw new RangeError(
-            'video watermark calibration failed: temporal estimate does not ' +
-              'correlate with the watermark template and no usable opacity ' +
-              'could be fitted — is there a Veo watermark in the ' +
-              'bottom-right corner?',
+            'video watermark calibration failed: the temporal estimate does ' +
+              'not correlate with the watermark template — is there a Veo ' +
+              'watermark in the bottom-right corner?',
           );
         }
         alpha = new Float32Array(template.length);

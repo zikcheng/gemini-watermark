@@ -48,31 +48,51 @@ function probe(file) {
   });
 }
 
-/** Yield each decoded frame of `file` as an rgb24 Buffer. */
+/**
+ * Yield each decoded frame of `file` as an rgb24 Buffer.
+ *
+ * Assumes constant frame rate and no rotation metadata — true of Veo
+ * output. The raw pipe carries no timestamps, so a VFR source would
+ * drift against its copied audio; `-noautorotate` keeps the decoded
+ * geometry equal to the probed (coded) dimensions rather than silently
+ * transposing a rotated file into scrambled rows.
+ */
 async function* decodeFrames(file, width, height) {
   const frameBytes = width * height * 3;
   const dec = spawn('ffmpeg', [
-    '-v', 'error', '-i', file, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-',
+    '-v', 'error', '-noautorotate', '-i', file,
+    '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-',
   ]);
   dec.stderr.on('data', (d) => process.stderr.write(d));
-  const exited = new Promise((resolve, reject) => {
-    dec.on('error', reject);
+  // Resolve-only, error carried out-of-band: an abandoned generator
+  // (consumer threw mid-loop) must not leave a floating rejection.
+  let exitError;
+  const exited = new Promise((resolve) => {
+    dec.on('error', (cause) => {
+      exitError = cause;
+      resolve();
+    });
     dec.on('close', (code) => {
-      if (code !== 0) reject(new Error(`ffmpeg decode exited ${code}`));
-      else resolve();
+      if (code !== 0) exitError ??= new Error(`ffmpeg decode exited ${code}`);
+      resolve();
     });
   });
-  let pending = Buffer.alloc(0);
-  for await (const chunk of dec.stdout) {
-    pending = pending.length === 0 ? chunk : Buffer.concat([pending, chunk]);
-    while (pending.length >= frameBytes) {
-      yield pending.subarray(0, frameBytes);
-      pending = pending.subarray(frameBytes);
+  try {
+    let pending = Buffer.alloc(0);
+    for await (const chunk of dec.stdout) {
+      pending = pending.length === 0 ? chunk : Buffer.concat([pending, chunk]);
+      while (pending.length >= frameBytes) {
+        yield pending.subarray(0, frameBytes);
+        pending = pending.subarray(frameBytes);
+      }
     }
-  }
-  await exited;
-  if (pending.length !== 0) {
-    throw new Error(`decoder left ${pending.length} trailing bytes (not a whole frame)`);
+    await exited;
+    if (exitError) throw exitError;
+    if (pending.length !== 0) {
+      throw new Error(`decoder left ${pending.length} trailing bytes (not a whole frame)`);
+    }
+  } finally {
+    dec.kill();
   }
 }
 
@@ -106,6 +126,9 @@ const enc = spawn('ffmpeg', [
   output,
 ]);
 enc.stderr.on('data', (d) => process.stderr.write(d));
+// Swallow stdin errors (EPIPE when the encoder dies mid-run): the close
+// handler below owns the story and reports the encoder's exit code.
+enc.stdin.on('error', () => {});
 const encoded = new Promise((resolve, reject) => {
   enc.on('error', reject);
   enc.on('close', (code) => {
@@ -115,11 +138,24 @@ const encoded = new Promise((resolve, reject) => {
 });
 
 let outFrames = 0;
-for await (const frame of decodeFrames(input, width, height)) {
-  removeVideoWatermark({ data: frame, width, height, channels: 3 }, calibration);
-  outFrames += 1;
-  if (!enc.stdin.write(frame)) await once(enc.stdin, 'drain');
+try {
+  for await (const frame of decodeFrames(input, width, height)) {
+    // A destroyed stdin never drains and never errors again — without
+    // this check a dead encoder would hang the loop instead of failing.
+    if (enc.stdin.destroyed) await encoded;
+    removeVideoWatermark({ data: frame, width, height, channels: 3 }, calibration);
+    outFrames += 1;
+    if (!enc.stdin.write(frame)) await once(enc.stdin, 'drain');
+  }
+  enc.stdin.end();
+} catch (cause) {
+  // A dead encoder is the usual reason the write loop fails; prefer its
+  // exit-code message over the secondary EPIPE. `encoded` rejecting here
+  // throws that message; if the encoder is actually fine, the decode
+  // failure is the story.
+  enc.stdin.end();
+  await encoded;
+  throw cause;
 }
-enc.stdin.end();
 await encoded;
 console.log(`done: ${outFrames} frames -> ${output}`);

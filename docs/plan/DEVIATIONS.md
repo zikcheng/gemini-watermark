@@ -429,7 +429,9 @@ there is nothing to defer to and the C++-is-authority rule does not
 bind it. Because the opacity is not constant across videos, the module
 self-calibrates per input (temporal mean → harmonic fill → alpha
 estimate, gated by NCC ≥ 0.98 against V1-48, with a gain-fitted
-template fallback) instead of shipping a fifth baked alpha map. The
+template fallback for corners that still correlate at ≥ 0.5 and a
+RangeError below that — a clean video must throw, not receive a ghost
+sparkle) instead of shipping a fifth baked alpha map. The
 48/96 geometry rule is asserted only for frames that can hold the
 calibration window, and the measurements above are pinned by synthetic
 round-trip tests in `test/video.test.ts`. Should upstream ever grow a

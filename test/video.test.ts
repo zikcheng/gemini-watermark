@@ -260,13 +260,17 @@ describe('template fallback', () => {
 
     expect(calibration.source).toBe('template');
     expect(calibration.templateNcc).toBeLessThan(0.98);
+    // A watermarked-but-unestimable corner still correlates well above
+    // the ghost-rejection floor — this is the margin that keeps the
+    // fallback reachable at all (clean corners measure ≤ 0.10).
+    expect(calibration.templateNcc).toBeGreaterThan(0.5);
     // The alpha actually used is exactly template × gain — the mechanism,
-    // checked cell-by-cell rather than inferred from `source`.
+    // checked cell-by-cell and byte-exact: the stored f32 must be the
+    // f64 product rounded once, nothing else.
     const template = getSourceAlphaMap('V1', 'small');
     for (let i = 0; i < template.length; i += 1) {
-      expect(calibration.alpha[i]).toBeCloseTo(
-        (template[i] ?? 0) * calibration.templateGain,
-        6,
+      expect(calibration.alpha[i]).toBe(
+        Math.fround((template[i] ?? 0) * calibration.templateGain),
       );
     }
     // Sanity bracket only: the injected opacity is 0.573 and the fill
@@ -274,5 +278,60 @@ describe('template fallback', () => {
     // would mean the fit broke, not that it drifted.
     expect(calibration.templateGain).toBeGreaterThan(0.3);
     expect(calibration.templateGain).toBeLessThan(0.9);
+  });
+});
+
+describe('clean videos must throw, not get a ghost sparkle', () => {
+  // The dangerous failure mode is silent: a calibration that "succeeds"
+  // on a clean video reverse-blends a sparkle *into* every frame. Both
+  // clean shapes the estimator can meet must therefore end in the
+  // RangeError, whichever internal path they take — the moving scene
+  // reaches it through an empty refined support (estimate ≡ 0, gain 0),
+  // the static one through the correlation floor (NCC ≈ 0.1 < 0.5).
+  it('rejects a clean video with a moving background', () => {
+    const rng = makeRng(0xdecafbad);
+    const calibrator = createVideoCalibrator(WIDTH, HEIGHT);
+    for (let t = 0; t < 96; t += 1) calibrator.addFrame(backgroundFrame(t, rng));
+    expect(() => calibrator.calibrate()).toThrow(RangeError);
+    expect(() => calibrator.calibrate()).toThrow(/does not correlate/);
+  });
+
+  it('rejects a clean video with a static background', () => {
+    const rng = makeRng(0x5eed5eed);
+    const still = backgroundFrame(0, rng);
+    const calibrator = createVideoCalibrator(WIDTH, HEIGHT);
+    for (let t = 0; t < 24; t += 1) calibrator.addFrame(still);
+    expect(() => calibrator.calibrate()).toThrow(RangeError);
+  });
+});
+
+describe('RGBA frames', () => {
+  it('calibrates identically to the same frames as RGB', () => {
+    // addFrame reads the first three channels through the stride, so an
+    // RGBA repack of the same pixels must accumulate the same sums and
+    // produce a bit-identical alpha map.
+    const alpha = trueAlpha();
+    const config = getVideoWatermarkConfig(WIDTH, HEIGHT);
+    const rng = makeRng(0xcafe0123);
+    const rgbCalibrator = createVideoCalibrator(WIDTH, HEIGHT);
+    const rgbaCalibrator = createVideoCalibrator(WIDTH, HEIGHT);
+    for (let t = 0; t < 48; t += 1) {
+      const frame = backgroundFrame(t, rng);
+      addWatermarkRegion(frame, alpha, VIDEO_LOGO_SIZE, VIDEO_LOGO_SIZE, config.position);
+      rgbCalibrator.addFrame(frame);
+      const rgba = new Uint8Array(WIDTH * HEIGHT * 4);
+      for (let p = 0; p < WIDTH * HEIGHT; p += 1) {
+        rgba[p * 4] = frame.data[p * 3] ?? 0;
+        rgba[p * 4 + 1] = frame.data[p * 3 + 1] ?? 0;
+        rgba[p * 4 + 2] = frame.data[p * 3 + 2] ?? 0;
+        rgba[p * 4 + 3] = 255;
+      }
+      rgbaCalibrator.addFrame({ data: rgba, width: WIDTH, height: HEIGHT, channels: 4 });
+    }
+    const fromRgb = rgbCalibrator.calibrate();
+    const fromRgba = rgbaCalibrator.calibrate();
+    expect(fromRgba.source).toBe(fromRgb.source);
+    expect(fromRgba.templateNcc).toBe(fromRgb.templateNcc);
+    expect(Array.from(fromRgba.alpha)).toEqual(Array.from(fromRgb.alpha));
   });
 });

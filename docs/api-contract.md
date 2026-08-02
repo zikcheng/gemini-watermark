@@ -252,9 +252,12 @@ Semantics:
   `calibrate()` estimates the per-video alpha map from the temporal
   mean, and reports how via `source`: `'estimated'` when the estimate
   correlates with the V1-48 source map at NCC ≥ 0.98, `'template'` when
-  it fell back to that map scaled by the least-squares gain. It throws
-  `RangeError` with no frames, and when *neither* path yields a usable
-  map (no positive gain — nothing watermark-shaped in the corner).
+  it fell back to that map scaled by the least-squares gain. The
+  fallback is itself gated: below NCC 0.5 — or without a positive
+  fitted gain — nothing watermark-shaped is in the corner, and
+  `calibrate()` throws `RangeError` rather than hand back an alpha that
+  would blend a ghost sparkle *into* a clean video. It also throws
+  `RangeError` with no frames.
 - `removeVideoWatermark(frame, calibration)` reverse-blends in place via
   the same arithmetic as `removeWatermarkRegion` (alpha-skip threshold,
   MAX_ALPHA clamp, A channel untouched) and throws `RangeError` when the
