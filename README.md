@@ -1,9 +1,11 @@
 # gemini-watermark
 
-Detect, remove, and add Gemini visible image watermarks via deterministic
-**reverse alpha blending**. A faithful TypeScript port of
+Detect, remove, and add Gemini visible **image** watermarks — and remove
+the Veo **video** watermark — via deterministic **reverse alpha
+blending**. The image engine is a faithful TypeScript port of
 [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool) by
-Allen Kuo.
+Allen Kuo; the video engine is this repository's own measured extension
+(see [Video](#video-veo)).
 
 Zero dependencies and environment-agnostic: the core has no DOM, no Node
 APIs and no file I/O, so it works wherever you can hand it a pixel buffer.
@@ -31,6 +33,14 @@ original = (watermarked − α × 255) / (1 − α)
 No generative inpainting, no hallucination — pixels are reconstructed
 mathematically. See the original author's write-up:
 [Removing Gemini AI Watermarks: A Deep Dive into Reverse Alpha Blending](https://allenkuo.medium.com/removing-gemini-ai-watermarks-a-deep-dive-into-reverse-alpha-blending-bbbd83af2a3f).
+
+Veo videos follow the same blend law but with a twist: the sparkle's
+opacity varies from video to video, so there is no fixed `α` to invert
+with. The video path therefore **measures `α` from the video itself** —
+the watermark is static while the scene moves, so the temporal mean of
+the corner isolates it, and inpainting the background mean turns the
+blend equation into a per-pixel alpha measurement. Same equation, same
+determinism, no model of any kind.
 
 ## Install
 
@@ -335,6 +345,7 @@ boundary stated rather than left to inference.
 | Reverse removal (V1 + V2, all profiles, incl. the forced-size quirk) | ✅ equivalent | `force` keeps the internal snap detection |
 | Forward add V1 | ✅ equivalent | |
 | Forward add V2 | ⚠️ TypeScript extension | not upstream equivalence — see below |
+| Veo video removal (self-calibrating) | ⚠️ TypeScript extension | no upstream video path exists — see [Video](#video-veo) |
 | Region/snap search, Soft Inpaint | ❌ not in v0.1.0 | planned, later |
 | NS/TELEA/AI denoise, file I/O | ❌ excluded by design | the core takes and returns pixel buffers |
 | Runtime environments | Node ≥ 20 + browsers | both CI-tested; nothing else promised |

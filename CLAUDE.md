@@ -16,6 +16,15 @@ reproduces them. A deviation from the reference is a bug even when the
 deviation looks better. Algorithm changes happen upstream first, then get
 ported with a version-bump note.
 
+One module is exempt because it has no upstream to defer to:
+**`src/video.ts`, the Veo video extension.** Upstream v0.3.2 has no video
+path, so its authority there is **measurement**: every constant and
+algorithmic choice traces to experiments on real Veo sample videos,
+recorded in `docs/plan/DEVIATIONS.md` D8 (and its quality addendum). The
+extension has its own rules below — the porting rules still bind it
+wherever it calls into ported code (`removeWatermarkRegion`,
+`quantizeU8`, the source alpha maps).
+
 ## Reference materials
 
 You only need the upstream C++ source when **porting a new algorithm
@@ -28,6 +37,7 @@ below carry the required semantics.
 | Upstream C++ source | `git clone https://github.com/allenk/GeminiWatermarkTool` at tag `v0.3.2` (commit `7c6a99f`) | Line-level porting reference. The module plan below names the exact upstream function each module ports. |
 | Reference kit | Generation scripts live in `tools/reference/` (see its README); regenerate the kit locally from the upstream release binary into `GWT_REFERENCE_DIR`. | Golden outputs + `manifest.json` with per-stage detection scores, for local pixel-level equivalence runs |
 | Committed fixtures | `test/data/fixtures.json` (in repo) | Geometry expectations (dims → variant/margin/logo/position) validated against the reference binary |
+| Video measurements | `docs/plan/DEVIATIONS.md` D8 + addendum (in repo) | The video extension's "upstream": geometry, blend law, per-video opacity, and the experiment table behind every `src/video.ts` constant. Measured from Veo 720p samples; the sample videos themselves are not committed. |
 
 ## Architecture and module plan
 
@@ -41,18 +51,19 @@ explicitly-named entry point, never in the core.
 |---|---|---|
 | `src/types.ts` | types from `watermark_engine.hpp` | ✅ |
 | `src/position.ts` | `get_watermark_config` / `get_watermark_size` / `v2_small_config_from_dims` (`watermark_engine.cpp`) | ✅ |
-| `src/alpha-maps.ts` | the four calibrated **source** BG captures (V1-48/V1-96/V2-36/V2-96), baked as data, no PNG decode at runtime (`blend_modes.cpp`) — derived sizes belong to `effectiveAlphaMap` below | ⏳ next |
-| `src/blend.ts` | `remove_watermark_alpha_blend` / `add_watermark_alpha_blend` (`blend_modes.cpp`) | ⏳ |
-| `src/imageops.ts` + `src/resize.ts` | minimal primitives the detector needs: grayscale, Sobel magnitude, NCC template match (`TM_CCOEFF_NORMED`), mean/stddev, area/bilinear resize + `effectiveAlphaMap` derived-size resolution (`effective_alpha_map` / `create_interpolated_alpha`, `watermark_engine.cpp`) | ⏳ |
-| `src/detect.ts` | `detect_one_variant` (three stages, circuit breaker, spatial rescue, ±3px V2-small snap) + the V2→V1 fallback and skip/processed status semantics — the CLI's `error` exit code stays CLI-only, invalid input throws (`watermark_engine.cpp`, `cli_app.cpp`) | ⏳ |
-| `src/guided.ts` | `guided_detect` coarse-to-fine multi-scale snap engine (`watermark_engine.cpp`) | ⏳ later |
-| `src/inpaint.ts` | Soft Inpaint, GAUSSIAN branch of `inpaint_residual` (`watermark_engine.cpp`) | ⏳ later |
-| `src/video.ts` | **extension, no upstream counterpart** — Veo video geometry + temporal self-calibration + per-frame removal; provenance is measurement (DEVIATIONS D8), not C++ | ✅ |
+| `src/alpha-maps.ts` | the four calibrated **source** BG captures (V1-48/V1-96/V2-36/V2-96), baked as data, no PNG decode at runtime (`blend_modes.cpp`) — derived sizes belong to `effectiveAlphaMap` below | ✅ |
+| `src/blend.ts` | `remove_watermark_alpha_blend` / `add_watermark_alpha_blend` (`blend_modes.cpp`) | ✅ |
+| `src/imageops.ts` + `src/resize.ts` | minimal primitives the detector needs: grayscale, Sobel magnitude, NCC template match (`TM_CCOEFF_NORMED`), mean/stddev, area/bilinear resize + `effectiveAlphaMap` derived-size resolution (`effective_alpha_map` / `create_interpolated_alpha`, `watermark_engine.cpp`) | ✅ |
+| `src/detect.ts` | `detect_one_variant` (three stages, circuit breaker, spatial rescue, ±3px V2-small snap) + the V2→V1 fallback and skip/processed status semantics — the CLI's `error` exit code stays CLI-only, invalid input throws (`watermark_engine.cpp`, `cli_app.cpp`) | ✅ |
+| `src/guided.ts` | `guided_detect` coarse-to-fine multi-scale snap engine (`watermark_engine.cpp`) | ⏳ M7 |
+| `src/inpaint.ts` | Soft Inpaint, GAUSSIAN branch of `inpaint_residual` (`watermark_engine.cpp`) | ⏳ M7 |
+| `src/video.ts` | **extension, no upstream counterpart** — Veo geometry (48px logo, 96px margins), temporal self-calibration (biharmonic background inpainting), per-frame reverse blend + edge-band smoothing, one-call `processVideo`; provenance is measurement (DEVIATIONS D8), not C++ | ✅ |
 | `src/index.ts` | public API surface | grows with modules |
 
-Port in that order — each module builds on the previous, and each lands in
-the same PR/commit as its equivalence tests. Update the README status table
-in the same commit.
+Port the remaining modules in that order — each lands in the same
+PR/commit as its equivalence tests. Update the README status table in the
+same commit. The ffmpeg glue for video lives in `tools/video/`, outside
+the core, and stays out of the npm package.
 
 ## Porting rules (numeric fidelity)
 
@@ -114,6 +125,36 @@ All of them are load-bearing:
 Every ported function carries a provenance comment naming the C++
 file/function it ports, in the style already used by `src/position.ts`.
 
+## Video extension rules (`src/video.ts`)
+
+The porting rules above answer "does this match the C++?"; the video
+module has no C++, so its rules answer "does this match the *videos*?":
+
+1. **Constants are measured, not designed.** Every threshold, size and
+   weight carries a comment stating what was measured and how it decided
+   the value (the style already used throughout `src/video.ts`). A number
+   with no measurement behind it does not belong in the module.
+2. **Algorithm changes must win a race.** Any change to the estimator,
+   the gates, or the finishing pass is validated against alternatives on
+   real sample videos before landing, scored by metrics that are not
+   circular (a metric aligned with the estimator's own objective will
+   always flatter it — the D8 addendum documents this trap and the
+   signals used instead: residual/template correlation and edge-band
+   Laplacian noise vs an untouched control ring). Record the variant
+   table in a D8 addendum; losing variants are documented, not deleted
+   from history.
+3. **Clean videos are the dangerous input.** A calibration that
+   "succeeds" on a watermark-free video reverse-blends a ghost sparkle
+   *into* it. Anything touching the gates keeps the negative paths
+   intact: the streaming calibrator throws, `processVideo` skips with
+   every frame byte-identical, and both are pinned by tests.
+4. **The blend arithmetic is still the port's.** Removal delegates to
+   `removeWatermarkRegion` and quantization to `quantizeU8`; the video
+   module must not fork its own copies of ported math.
+5. **Geometry claims are 720p-wide only.** The 48/96 rule was measured on
+   1280×720 and 720×1280 samples; other resolutions are unverified by
+   design, and the template gate — not optimism — is what handles them.
+
 ## Testing conventions
 
 - Framework: vitest. Tests live in `test/`, named `<module>.test.ts`.
@@ -139,6 +180,15 @@ file/function it ports, in the style already used by `src/position.ts`.
 - Negative paths matter: clean images must skip (circuit breaker), and
   buffer-shape validation errors must throw `RangeError`/`TypeError` with
   actionable messages.
+- Video tests (`test/video.test.ts`) have no upstream oracle, so they run
+  the other direction: synthetic videos with exactly known ground truth —
+  watermark forward-blended by our own `addWatermarkRegion` — and
+  calibration/removal must recover it within budgets **derived** in the
+  file's header comment (never tuned to pass; same discipline as the
+  oracle tolerances). Clean synthetic videos must skip/throw, both
+  fallback routes are pinned mechanically, and calibrate-heavy tests
+  carry explicit `{ timeout }` options because the biharmonic fill takes
+  seconds, not milliseconds.
 
 ## Code style
 
