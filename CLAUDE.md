@@ -47,6 +47,7 @@ explicitly-named entry point, never in the core.
 | `src/detect.ts` | `detect_one_variant` (three stages, circuit breaker, spatial rescue, ±3px V2-small snap) + the V2→V1 fallback and skip/processed status semantics — the CLI's `error` exit code stays CLI-only, invalid input throws (`watermark_engine.cpp`, `cli_app.cpp`) | ⏳ |
 | `src/guided.ts` | `guided_detect` coarse-to-fine multi-scale snap engine (`watermark_engine.cpp`) | ⏳ later |
 | `src/inpaint.ts` | Soft Inpaint, GAUSSIAN branch of `inpaint_residual` (`watermark_engine.cpp`) | ⏳ later |
+| `src/video.ts` | **extension, no upstream counterpart** — Veo video geometry + temporal self-calibration + per-frame removal; provenance is measurement (DEVIATIONS D8), not C++ | ✅ |
 | `src/index.ts` | public API surface | grows with modules |
 
 Port in that order — each module builds on the previous, and each lands in

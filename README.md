@@ -109,6 +109,44 @@ if (result.status === 'processed') {
 }
 ```
 
+### Video (Veo)
+
+Veo videos carry a different visible watermark — a 48px sparkle inset
+96px from the bottom-right corner, at an opacity that varies from video
+to video — so removal is two-pass and self-calibrating: pass one feeds
+every decoded frame to a calibrator that estimates the alpha map from
+temporal statistics, pass two reverse-blends each frame with it. The
+core stays pixels-in, pixels-out; pair it with any decoder that yields
+raw RGB frames. With ffmpeg on PATH and this repo checked out:
+
+```sh
+npm run build
+node tools/video/remove-veo-video.mjs input.mp4 output.mp4
+```
+
+Or drive the API directly from your own frame source:
+
+```js
+import { createVideoCalibrator, removeVideoWatermark } from 'gemini-watermark';
+
+const calibrator = createVideoCalibrator(width, height);
+for (const frame of decodedFrames) {           // pass 1: RGB(A) ImageBuffers
+  calibrator.addFrame(frame);
+}
+const calibration = calibrator.calibrate();    // throws if no watermark geometry fits
+
+for (const frame of decodedFrames) {           // pass 2
+  removeVideoWatermark(frame, calibration);    // in place
+}
+```
+
+`calibration.source` tells you whether the per-video estimate was trusted
+(`'estimated'`) or the calibrator fell back to the gain-fitted V1
+template (`'template'`, e.g. on a near-static scene). This path is an
+extension measured from real Veo 720p output, not part of the
+GeminiWatermarkTool port — see `docs/plan/DEVIATIONS.md` D8 for the
+measurements behind it.
+
 ## API
 
 Full semantics are in [`docs/api-contract.md`](docs/api-contract.md). The
@@ -129,6 +167,15 @@ function getWatermarkTopLeft(config: WatermarkPosition, imageWidth: number, imag
 function getSourceAlphaMap(variant: WatermarkVariant, size: WatermarkSize): Float32Array;
 function removeWatermarkRegion(image: ImageBuffer, alpha: Float32Array, alphaWidth: number, alphaHeight: number, position: Point, logoValue?: number): void;
 function addWatermarkRegion(image: ImageBuffer, alpha: Float32Array, alphaWidth: number, alphaHeight: number, position: Point, logoValue?: number): void;
+
+// Veo video watermarks — an extension, not part of the upstream port.
+// Two-pass: feed every decoded frame to a calibrator, then reverse-blend
+// each frame with the calibrated alpha map. See "Video" below.
+const VIDEO_LOGO_SIZE: number;  // 48
+const VIDEO_MARGIN: number;     // 96
+function getVideoWatermarkConfig(width: number, height: number): VideoWatermarkConfig;
+function createVideoCalibrator(width: number, height: number): VideoCalibrator;
+function removeVideoWatermark(frame: ImageBuffer, calibration: VideoCalibration): void;
 ```
 
 Every type those signatures mention is exported too, so a caller can name
@@ -139,6 +186,7 @@ import type {
   DetectOptions, DetectionResult, DetectionScores,
   ImageBuffer, Point, Rect,
   ProcessOptions, ProcessResult, ProcessStatus,
+  VideoCalibration, VideoCalibrationSource, VideoCalibrator, VideoWatermarkConfig,
   WatermarkPosition, WatermarkSize, WatermarkVariant,
 } from 'gemini-watermark';
 ```
@@ -312,6 +360,11 @@ port must also skip.
 - **The fixture corpus is synthetic.** Equivalence is proven against
   generated fixtures processed by the reference binary, not against a
   collection of real Gemini output. Real-sample coverage is a known gap.
+- **Video geometry is measured at 720p only.** The 48px/96px rule and
+  the V1-shaped alpha come from Veo 1280×720 and 720×1280 samples; the
+  calibrator's template gate catches a mismatch rather than guessing,
+  but other resolutions are unverified. SynthID applies to Veo output
+  too, and as with images it is untouched.
 - **Not every upstream capability is here.** See the scope matrix above.
 
 ## Status
@@ -322,6 +375,7 @@ port must also skip.
 | Alpha maps (baked calibration data) | ✅ ported + tested |
 | Reverse alpha blend (remove / add) | ✅ ported + tested |
 | Three-stage NCC detection | ✅ ported + tested |
+| Veo video removal (self-calibrating, extension) | ✅ implemented + tested |
 | Guided multi-scale detection (snap) | ❌ M7 (not in v0.1.0) |
 | Soft inpaint residual cleanup | ❌ M7 (not in v0.1.0) |
 

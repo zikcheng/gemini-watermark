@@ -384,3 +384,54 @@ rows into equivalence rows. It is the only incremental kit work identified
 during M4 with a substantive return, which is why it is recorded here
 instead of being done: it does not block v0.1.0, and M7 already owns the
 guided-snap work the same fixture would serve.
+
+---
+
+## D8 — Veo videos carry a watermark no image profile describes
+
+**Milestone**: video extension · recorded 2026-08-02
+
+**Symptom**: the image detector *does* fire on Veo 720p video frames
+(V2 small, spatial ≈0.36–0.49), which reads as though the image pipeline
+covers video. It does not. The detection succeeds only because the video
+sparkle correlates with every sparkle template; the geometry it returns
+is wrong — 10px off on both axes with a 45px template against a 48px
+mark — so image-config removal would clean a misplaced region and leave
+the actual watermark's fringe standing.
+
+**Evidence**: temporal statistics over all 240 frames of each sample
+video (`veo-vidoe-16-9.mp4` 1280×720, `veo-vidoe-9-16.mp4` 720×1280).
+The watermark is static, so the per-pixel temporal mean isolates it
+against motion-blurred background, and harmonic inpainting of the
+background mean turns the blend equation into a per-pixel alpha
+measurement:
+
+- Support is 48×48 with its top-left corner 144px from the right and
+  bottom edges in **both** orientations — margin 96 + logo 48. The image
+  formula for these dimensions says margin 89, logo 45.
+- The measured alpha map matches the **V1 48px** source map in shape
+  (NCC 0.9976 / 0.9994 against the two videos' estimates) — not the V2
+  map the image-side era would suggest — but at a global opacity of
+  ~0.57, and the fitted gain differs across the two samples (0.559 vs
+  0.588, stable under two independent estimators: mean-based ≈
+  std-based within 0.06).
+- The blend law itself is the image one, achromatic against white:
+  per-channel alpha estimates agree within 0.005.
+
+Removal with the per-video estimate leaves a temporal-mean residual of
+|bias| < 0.4 levels and no template-shaped structure (residual/template
+NCC 0.16 and −0.01); the best fixed-gain template lags it on both
+videos (mean |residual| 2.5 vs 1.5 and 1.0 vs 0.66).
+
+**Disposition**: video support is built as an **extension**
+(`src/video.ts`), not a port — upstream v0.3.2 has no video path, so
+there is nothing to defer to and the C++-is-authority rule does not
+bind it. Because the opacity is not constant across videos, the module
+self-calibrates per input (temporal mean → harmonic fill → alpha
+estimate, gated by NCC ≥ 0.98 against V1-48, with a gain-fitted
+template fallback) instead of shipping a fifth baked alpha map. The
+48/96 geometry rule is asserted only for frames that can hold the
+calibration window, and the measurements above are pinned by synthetic
+round-trip tests in `test/video.test.ts`. Should upstream ever grow a
+video mode, its behaviour takes over and this entry records why ours
+looked the way it did.

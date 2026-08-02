@@ -228,6 +228,46 @@ channel. That proves the forward blend inverts the reverse one; it does
 
 `mode: 'add'` with `variant: 'V1'` (the default) *is* upstream-equivalent.
 
+## Extension: Veo video removal
+
+Added after v0.1.2 as a new capability (the contract's "new capabilities
+belong to a later version" clause). No upstream counterpart exists;
+`docs/plan/DEVIATIONS.md` D8 records the measurements this rests on.
+
+Exports: `VIDEO_LOGO_SIZE` (48), `VIDEO_MARGIN` (96),
+`getVideoWatermarkConfig`, `createVideoCalibrator`,
+`removeVideoWatermark`, and types `VideoWatermarkConfig`,
+`VideoCalibrator`, `VideoCalibration`, `VideoCalibrationSource`.
+
+Semantics:
+
+- `getVideoWatermarkConfig(width, height)` is pure geometry: the 48px
+  logo box inset 96px from the right and bottom edges, plus the 140px
+  calibration window centered on it. Throws `RangeError` when either
+  dimension is below 190 (the window would leave the frame) or
+  non-integral.
+- `createVideoCalibrator(width, height).addFrame(frame)` accepts RGB and
+  RGBA `ImageBuffer`s of exactly those dimensions and accumulates the
+  calibration window's temporal sums; it never retains the frame.
+  `calibrate()` estimates the per-video alpha map from the temporal
+  mean, and reports how via `source`: `'estimated'` when the estimate
+  correlates with the V1-48 source map at NCC ≥ 0.98, `'template'` when
+  it fell back to that map scaled by the least-squares gain. It throws
+  `RangeError` with no frames, and when *neither* path yields a usable
+  map (no positive gain — nothing watermark-shaped in the corner).
+- `removeVideoWatermark(frame, calibration)` reverse-blends in place via
+  the same arithmetic as `removeWatermarkRegion` (alpha-skip threshold,
+  MAX_ALPHA clamp, A channel untouched) and throws `RangeError` when the
+  frame's geometry disagrees with the calibration's.
+- Determinism: same frames in, same calibration and pixels out. There is
+  no randomness and no time dependence.
+
+What is **not** promised: geometry above/below 720p-class frames (the
+gate exists precisely because only 720p was measured), any file or
+container handling, and the numeric identity of `templateNcc`/
+`templateGain` across library versions — they are diagnostics, not
+oracle-checked scores.
+
 ## Implementation notes (not contract)
 
 Behaviour that the contract does not promise but the port must still get
