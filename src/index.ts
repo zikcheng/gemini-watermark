@@ -47,6 +47,8 @@ export {
 // Video support is an extension beyond the upstream port — see the
 // provenance notes in src/video.ts and docs/plan/DEVIATIONS.md D8.
 export type {
+  ProcessVideoOptions,
+  ProcessVideoResult,
   VideoCalibration,
   VideoCalibrationSource,
   VideoCalibrator,
@@ -59,5 +61,6 @@ export {
   VIDEO_MARGIN,
   createVideoCalibrator,
   getVideoWatermarkConfig,
+  processVideo,
   removeVideoWatermark,
 } from './video.js';

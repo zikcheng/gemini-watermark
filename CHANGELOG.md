@@ -27,7 +27,10 @@ the port was wrong about upstream.
   out). The template fallback's opacity is calibrated by a 1-D search
   that zeroes the sparkle outline's edge energy. Every algorithmic
   choice was raced against alternatives on the sample videos — the
-  variant table lives in the D8 addendum. An ffmpeg-driven CLI lives in
+  variant table lives in the D8 addendum. `processVideo(frames)` is the
+  one-call form for in-memory sequences, with the image pipeline's
+  processed/skipped semantics; the calibrator pair remains the
+  streaming form. An ffmpeg-driven CLI lives in
   `tools/video/remove-veo-video.mjs`, outside the published package.
 
 ## [0.1.2] - 2026-08-02

@@ -49,7 +49,7 @@
 import { getSourceAlphaMap } from './alpha-maps.js';
 import { removeWatermarkRegion } from './blend.js';
 import { quantizeU8 } from './quantize.js';
-import type { ImageBuffer, Point } from './types.js';
+import type { ImageBuffer, Point, ProcessStatus } from './types.js';
 
 /** Channels smoothed. The A channel of an RGBA buffer is never written. */
 const COLOR_CHANNELS = 3;
@@ -523,152 +523,200 @@ function edgeSearchGain(
 }
 
 /**
+ * Shared accumulator behind {@link createVideoCalibrator} and
+ * {@link processVideo}: window sums plus the geometry they were built
+ * for. Plain module functions rather than closure methods so the
+ * one-call pipeline can reach the non-throwing calibration path.
+ */
+interface CalibratorState {
+  width: number;
+  height: number;
+  config: VideoWatermarkConfig;
+  sums: [Float64Array, Float64Array, Float64Array];
+  frames: number;
+}
+
+function createCalibratorState(width: number, height: number): CalibratorState {
+  const config = getVideoWatermarkConfig(width, height);
+  const edge = config.windowSize;
+  // One f64 accumulator per channel; a 10-minute 24fps video sums 14400
+  // frames of at most 255, far inside f64's exact-integer range.
+  return {
+    width,
+    height,
+    config,
+    sums: [
+      new Float64Array(edge * edge),
+      new Float64Array(edge * edge),
+      new Float64Array(edge * edge),
+    ],
+    frames: 0,
+  };
+}
+
+function accumulateFrame(state: CalibratorState, frame: ImageBuffer): void {
+  const { width, height, config } = state;
+  if (frame.width !== width || frame.height !== height) {
+    throw new RangeError(
+      `frame is ${frame.width}x${frame.height}, calibrator expects ${width}x${height}`,
+    );
+  }
+  if (frame.channels !== 3 && frame.channels !== 4) {
+    throw new RangeError(`channels must be 3 or 4, got ${frame.channels}`);
+  }
+  const expected = width * height * frame.channels;
+  if (frame.data.length !== expected) {
+    throw new RangeError(
+      `frame data has ${frame.data.length} bytes, expected ${expected}`,
+    );
+  }
+  const edge = config.windowSize;
+  const originX = config.windowOrigin.x;
+  const originY = config.windowOrigin.y;
+  const { data, channels } = frame;
+  const [r, g, b] = state.sums;
+  for (let row = 0; row < edge; row += 1) {
+    const frameRow = (originY + row) * width;
+    const windowRow = row * edge;
+    for (let col = 0; col < edge; col += 1) {
+      const offset = (frameRow + originX + col) * channels;
+      const i = windowRow + col;
+      r[i] = (r[i] ?? 0) + (data[offset] ?? 0);
+      g[i] = (g[i] ?? 0) + (data[offset + 1] ?? 0);
+      b[i] = (b[i] ?? 0) + (data[offset + 2] ?? 0);
+    }
+  }
+  state.frames += 1;
+}
+
+/**
+ * The calibration computation. Returns `calibration: null` — with the
+ * diagnostic NCC — when nothing watermark-shaped is in the corner;
+ * {@link VideoCalibrator.calibrate} turns that into a `RangeError`,
+ * {@link processVideo} into a `'skipped'` result. Throws only on
+ * invalid use (no frames accumulated).
+ */
+function computeCalibration(
+  state: CalibratorState,
+): { calibration: VideoCalibration | null; templateNcc: number } {
+  const { config, sums, frames } = state;
+  const edge = config.windowSize;
+  if (frames === 0) {
+    throw new RangeError('cannot calibrate: no frames accumulated');
+  }
+  const means: [Float64Array, Float64Array, Float64Array] = [
+    new Float64Array(edge * edge),
+    new Float64Array(edge * edge),
+    new Float64Array(edge * edge),
+  ];
+  for (let c = 0; c < 3; c += 1) {
+    const sum = sums[c] as Float64Array;
+    const mean = means[c] as Float64Array;
+    for (let i = 0; i < sum.length; i += 1) mean[i] = (sum[i] ?? 0) / frames;
+  }
+
+  // Round 1: generous disk support, centered where the logo sits.
+  let support: Uint8Array = new Uint8Array(edge * edge);
+  const radius = edge * SUPPORT_DISK_FRACTION;
+  const center = (edge - 1) / 2;
+  for (let row = 0; row < edge; row += 1) {
+    for (let col = 0; col < edge; col += 1) {
+      const dy = row - center;
+      const dx = col - center;
+      if (dx * dx + dy * dy < radius * radius) support[row * edge + col] = 1;
+    }
+  }
+  const first = estimateAlpha(means, support, edge);
+
+  // Round 2: support refined to the sparkle actually found.
+  support = new Uint8Array(edge * edge);
+  for (let i = 0; i < first.length; i += 1) {
+    if ((first[i] ?? 0) > SUPPORT_REFINE_THRESHOLD) support[i] = 1;
+  }
+  keepLargestComponent(support, edge);
+  support = dilate(support, edge, SUPPORT_DILATE_RADIUS);
+  const second = estimateAlpha(means, support, edge);
+
+  // Extract the centered logo box, drop fill residue, clamp.
+  const pad = (edge - VIDEO_LOGO_SIZE) / 2;
+  const estimate = new Float32Array(VIDEO_LOGO_SIZE * VIDEO_LOGO_SIZE);
+  for (let row = 0; row < VIDEO_LOGO_SIZE; row += 1) {
+    for (let col = 0; col < VIDEO_LOGO_SIZE; col += 1) {
+      const i = (row + pad) * edge + (col + pad);
+      let value = support[i] !== 0 ? (second[i] ?? 0) : 0;
+      if (value <= ALPHA_NOISE_FLOOR) value = 0;
+      else if (value > ALPHA_CEILING) value = ALPHA_CEILING;
+      estimate[row * VIDEO_LOGO_SIZE + col] = value;
+    }
+  }
+
+  const template = getSourceAlphaMap('V1', 'small');
+  const ncc = correlate(estimate, template);
+  let cross = 0;
+  let templateEnergy = 0;
+  for (let i = 0; i < template.length; i += 1) {
+    cross += (estimate[i] ?? 0) * (template[i] ?? 0);
+    templateEnergy += (template[i] ?? 0) * (template[i] ?? 0);
+  }
+  const gain = templateEnergy > 0 ? cross / templateEnergy : 0;
+
+  let alpha = estimate;
+  let source: VideoCalibrationSource = 'estimated';
+  let usedGain = gain;
+  if (ncc < TEMPLATE_NCC_GATE) {
+    if (ncc < TEMPLATE_NCC_FLOOR || !(gain > 0)) {
+      return { calibration: null, templateNcc: ncc };
+    }
+    // The edge search reads the opacity off the sparkle outline and
+    // is much less exposed to the fill bias that pollutes both the
+    // per-pixel estimate and its least-squares gain; the fit only
+    // remains as the backstop for a search with no bracket.
+    usedGain = edgeSearchGain(means, template, edge) ?? gain;
+    alpha = new Float32Array(template.length);
+    for (let i = 0; i < template.length; i += 1) {
+      alpha[i] = (template[i] ?? 0) * usedGain;
+    }
+    source = 'template';
+  }
+
+  return {
+    calibration: {
+      alpha,
+      logoSize: VIDEO_LOGO_SIZE,
+      position: config.position,
+      frames,
+      templateNcc: ncc,
+      templateGain: usedGain,
+      source,
+    },
+    templateNcc: ncc,
+  };
+}
+
+/**
  * Create a calibrator for frames of the given dimensions. Feed every
  * frame (or a uniform temporal subsample — the estimator only needs the
  * temporal mean) to `addFrame`, then call `calibrate` once.
  */
 export function createVideoCalibrator(width: number, height: number): VideoCalibrator {
-  const config = getVideoWatermarkConfig(width, height);
-  const edge = config.windowSize;
-  const originX = config.windowOrigin.x;
-  const originY = config.windowOrigin.y;
-  // One f64 accumulator per channel; a 10-minute 24fps video sums 14400
-  // frames of at most 255, far inside f64's exact-integer range.
-  const sums: [Float64Array, Float64Array, Float64Array] = [
-    new Float64Array(edge * edge),
-    new Float64Array(edge * edge),
-    new Float64Array(edge * edge),
-  ];
-  let frames = 0;
-
+  const state = createCalibratorState(width, height);
   return {
     get frameCount(): number {
-      return frames;
+      return state.frames;
     },
-
     addFrame(frame: ImageBuffer): void {
-      if (frame.width !== width || frame.height !== height) {
-        throw new RangeError(
-          `frame is ${frame.width}x${frame.height}, calibrator expects ${width}x${height}`,
-        );
-      }
-      if (frame.channels !== 3 && frame.channels !== 4) {
-        throw new RangeError(`channels must be 3 or 4, got ${frame.channels}`);
-      }
-      const expected = width * height * frame.channels;
-      if (frame.data.length !== expected) {
-        throw new RangeError(
-          `frame data has ${frame.data.length} bytes, expected ${expected}`,
-        );
-      }
-      const { data, channels } = frame;
-      const [r, g, b] = sums;
-      for (let row = 0; row < edge; row += 1) {
-        const frameRow = (originY + row) * width;
-        const windowRow = row * edge;
-        for (let col = 0; col < edge; col += 1) {
-          const offset = (frameRow + originX + col) * channels;
-          const i = windowRow + col;
-          r[i] = (r[i] ?? 0) + (data[offset] ?? 0);
-          g[i] = (g[i] ?? 0) + (data[offset + 1] ?? 0);
-          b[i] = (b[i] ?? 0) + (data[offset + 2] ?? 0);
-        }
-      }
-      frames += 1;
+      accumulateFrame(state, frame);
     },
-
     calibrate(): VideoCalibration {
-      if (frames === 0) {
-        throw new RangeError('cannot calibrate: no frames accumulated');
+      const { calibration } = computeCalibration(state);
+      if (calibration === null) {
+        throw new RangeError(
+          'video watermark calibration failed: the temporal estimate does ' +
+            'not correlate with the watermark template — is there a Veo ' +
+            'watermark in the bottom-right corner?',
+        );
       }
-      const means: [Float64Array, Float64Array, Float64Array] = [
-        new Float64Array(edge * edge),
-        new Float64Array(edge * edge),
-        new Float64Array(edge * edge),
-      ];
-      for (let c = 0; c < 3; c += 1) {
-        const sum = sums[c] as Float64Array;
-        const mean = means[c] as Float64Array;
-        for (let i = 0; i < sum.length; i += 1) mean[i] = (sum[i] ?? 0) / frames;
-      }
-
-      // Round 1: generous disk support, centered where the logo sits.
-      let support: Uint8Array = new Uint8Array(edge * edge);
-      const radius = edge * SUPPORT_DISK_FRACTION;
-      const center = (edge - 1) / 2;
-      for (let row = 0; row < edge; row += 1) {
-        for (let col = 0; col < edge; col += 1) {
-          const dy = row - center;
-          const dx = col - center;
-          if (dx * dx + dy * dy < radius * radius) support[row * edge + col] = 1;
-        }
-      }
-      const first = estimateAlpha(means, support, edge);
-
-      // Round 2: support refined to the sparkle actually found.
-      support = new Uint8Array(edge * edge);
-      for (let i = 0; i < first.length; i += 1) {
-        if ((first[i] ?? 0) > SUPPORT_REFINE_THRESHOLD) support[i] = 1;
-      }
-      keepLargestComponent(support, edge);
-      support = dilate(support, edge, SUPPORT_DILATE_RADIUS);
-      const second = estimateAlpha(means, support, edge);
-
-      // Extract the centered logo box, drop fill residue, clamp.
-      const pad = (edge - VIDEO_LOGO_SIZE) / 2;
-      const estimate = new Float32Array(VIDEO_LOGO_SIZE * VIDEO_LOGO_SIZE);
-      for (let row = 0; row < VIDEO_LOGO_SIZE; row += 1) {
-        for (let col = 0; col < VIDEO_LOGO_SIZE; col += 1) {
-          const i = (row + pad) * edge + (col + pad);
-          let value = support[i] !== 0 ? (second[i] ?? 0) : 0;
-          if (value <= ALPHA_NOISE_FLOOR) value = 0;
-          else if (value > ALPHA_CEILING) value = ALPHA_CEILING;
-          estimate[row * VIDEO_LOGO_SIZE + col] = value;
-        }
-      }
-
-      const template = getSourceAlphaMap('V1', 'small');
-      const ncc = correlate(estimate, template);
-      let cross = 0;
-      let templateEnergy = 0;
-      for (let i = 0; i < template.length; i += 1) {
-        cross += (estimate[i] ?? 0) * (template[i] ?? 0);
-        templateEnergy += (template[i] ?? 0) * (template[i] ?? 0);
-      }
-      const gain = templateEnergy > 0 ? cross / templateEnergy : 0;
-
-      let alpha = estimate;
-      let source: VideoCalibrationSource = 'estimated';
-      let usedGain = gain;
-      if (ncc < TEMPLATE_NCC_GATE) {
-        if (ncc < TEMPLATE_NCC_FLOOR || !(gain > 0)) {
-          throw new RangeError(
-            'video watermark calibration failed: the temporal estimate does ' +
-              'not correlate with the watermark template — is there a Veo ' +
-              'watermark in the bottom-right corner?',
-          );
-        }
-        // The edge search reads the opacity off the sparkle outline and
-        // is much less exposed to the fill bias that pollutes both the
-        // per-pixel estimate and its least-squares gain; the fit only
-        // remains as the backstop for a search with no bracket.
-        usedGain = edgeSearchGain(means, template, edge) ?? gain;
-        alpha = new Float32Array(template.length);
-        for (let i = 0; i < template.length; i += 1) {
-          alpha[i] = (template[i] ?? 0) * usedGain;
-        }
-        source = 'template';
-      }
-
-      return {
-        alpha,
-        logoSize: VIDEO_LOGO_SIZE,
-        position: config.position,
-        frames,
-        templateNcc: ncc,
-        templateGain: usedGain,
-        source,
-      };
+      return calibration;
     },
   };
 }
@@ -821,4 +869,74 @@ export function removeVideoWatermark(
   if (options.smoothEdges !== false) {
     smoothEdgeBand(frame, calibration);
   }
+}
+
+/** Options for {@link processVideo}. */
+export interface ProcessVideoOptions {
+  /** Forwarded to {@link removeVideoWatermark}. Default true. */
+  smoothEdges?: boolean;
+}
+
+/**
+ * Outcome of the one-call video pipeline, shaped after the image
+ * pipeline's `ProcessResult`: `'skipped'` means every frame is
+ * byte-identical to what was passed in.
+ */
+export interface ProcessVideoResult {
+  status: ProcessStatus;
+  /** Frames examined (and, when processed, modified). */
+  frames: number;
+  /**
+   * The calibration's diagnostic NCC against the V1-48 map — reported
+   * on the skip path too, where it is what the skip decision read.
+   */
+  templateNcc: number;
+  /** Present when processed. */
+  calibration?: VideoCalibration;
+}
+
+/**
+ * The whole pipeline in one call, for callers holding a decoded frame
+ * sequence in memory — the video analogue of `processImage`. Runs the
+ * temporal calibration over `frames`, and either reverse-blends every
+ * frame in place (`'processed'`) or, when nothing watermark-shaped is
+ * in the corner, leaves every frame untouched (`'skipped'`) — the
+ * skip-not-throw semantics of the image pipeline, and the reason no
+ * pixel is written until calibration has succeeded.
+ *
+ * The two-pass {@link createVideoCalibrator} + {@link removeVideoWatermark}
+ * form remains for callers streaming frames through bounded memory
+ * (decode twice, hold one frame at a time), like `tools/video/` does.
+ *
+ * @throws RangeError on an empty sequence, mismatched frame dimensions,
+ *   or frames too small for the watermark geometry — invalid input
+ *   throws; only "no watermark found" skips.
+ */
+export function processVideo(
+  frames: readonly ImageBuffer[],
+  options: ProcessVideoOptions = {},
+): ProcessVideoResult {
+  const head = frames[0];
+  if (head === undefined) {
+    throw new RangeError('processVideo needs at least one frame');
+  }
+  const state = createCalibratorState(head.width, head.height);
+  for (const frame of frames) {
+    accumulateFrame(state, frame);
+  }
+  const { calibration, templateNcc } = computeCalibration(state);
+  if (calibration === null) {
+    return { status: 'skipped', frames: frames.length, templateNcc };
+  }
+  const removeOptions: VideoRemoveOptions =
+    options.smoothEdges === undefined ? {} : { smoothEdges: options.smoothEdges };
+  for (const frame of frames) {
+    removeVideoWatermark(frame, calibration, removeOptions);
+  }
+  return {
+    status: 'processed',
+    frames: frames.length,
+    templateNcc,
+    calibration,
+  };
 }

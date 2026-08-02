@@ -8,6 +8,7 @@ import {
   VIDEO_MARGIN,
   createVideoCalibrator,
   getVideoWatermarkConfig,
+  processVideo,
   removeVideoWatermark,
 } from '../src/video.js';
 
@@ -372,5 +373,82 @@ describe('RGBA frames', () => {
     expect(fromRgba.source).toBe(fromRgb.source);
     expect(fromRgba.templateNcc).toBe(fromRgb.templateNcc);
     expect(Array.from(fromRgba.alpha)).toEqual(Array.from(fromRgb.alpha));
+  });
+});
+
+describe('processVideo — the one-call pipeline', () => {
+  it('equals calibrate-then-remove on a watermarked sequence', { timeout: 60_000 }, () => {
+    const alpha = trueAlpha();
+    const config = getVideoWatermarkConfig(WIDTH, HEIGHT);
+    const build = (): ImageBuffer[] => {
+      const inner = makeRng(0x0dd5ba11);
+      const frames: ImageBuffer[] = [];
+      for (let t = 0; t < 48; t += 1) {
+        const frame = backgroundFrame(t, inner);
+        addWatermarkRegion(frame, alpha, VIDEO_LOGO_SIZE, VIDEO_LOGO_SIZE, config.position);
+        frames.push(frame);
+      }
+      return frames;
+    };
+
+    const oneCall = build();
+    const result = processVideo(oneCall);
+    expect(result.status).toBe('processed');
+    expect(result.frames).toBe(48);
+    expect(result.calibration?.source).toBe('estimated');
+    expect(result.templateNcc).toBe(result.calibration?.templateNcc);
+
+    // The manual two-pass form must produce the same bytes.
+    const manual = build();
+    const calibrator = createVideoCalibrator(WIDTH, HEIGHT);
+    for (const frame of manual) calibrator.addFrame(frame);
+    const calibration = calibrator.calibrate();
+    for (const frame of manual) removeVideoWatermark(frame, calibration);
+    for (let t = 0; t < manual.length; t += 1) {
+      const a = (oneCall[t] as ImageBuffer).data;
+      const b = (manual[t] as ImageBuffer).data;
+      if (!Buffer.from(a).equals(Buffer.from(b))) {
+        throw new Error(`frame ${t} differs between processVideo and the two-pass form`);
+      }
+    }
+  });
+
+  it('skips a clean video and leaves every frame byte-identical', { timeout: 60_000 }, () => {
+    const rng = makeRng(0xdecafbad);
+    const frames: ImageBuffer[] = [];
+    const pristine: Uint8Array[] = [];
+    for (let t = 0; t < 48; t += 1) {
+      const frame = backgroundFrame(t, rng);
+      frames.push(frame);
+      pristine.push(new Uint8Array(frame.data));
+    }
+    const result = processVideo(frames);
+    expect(result.status).toBe('skipped');
+    expect(result.frames).toBe(48);
+    expect(result.calibration).toBeUndefined();
+    expect(result.templateNcc).toBeLessThan(0.5);
+    for (let t = 0; t < frames.length; t += 1) {
+      if (!Buffer.from((frames[t] as ImageBuffer).data).equals(Buffer.from(pristine[t] as Uint8Array))) {
+        throw new Error(`skipped run modified frame ${t}`);
+      }
+    }
+  });
+
+  it('throws on an empty sequence and on mismatched dimensions, writing nothing', () => {
+    expect(() => processVideo([])).toThrow(RangeError);
+
+    const rng = makeRng(0xbadc0de1);
+    const good = backgroundFrame(0, rng);
+    const before = new Uint8Array(good.data);
+    const bad: ImageBuffer = {
+      data: new Uint8Array(64 * 64 * 3),
+      width: 64,
+      height: 64,
+      channels: 3,
+    };
+    // Mixed dimensions throw during accumulation — before any removal,
+    // so even the valid frames must be untouched.
+    expect(() => processVideo([good, bad])).toThrow(RangeError);
+    expect(Buffer.from(good.data).equals(Buffer.from(before))).toBe(true);
   });
 });

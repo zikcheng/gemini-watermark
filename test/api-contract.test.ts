@@ -50,6 +50,7 @@ describe('public exports', () => {
       'getWatermarkTopLeft',
       'passesThreshold',
       'processImage',
+      'processVideo',
       'removeVideoWatermark',
       'removeWatermarkRegion',
     ]);

@@ -236,9 +236,10 @@ belong to a later version" clause). No upstream counterpart exists;
 
 Exports: `VIDEO_LOGO_SIZE` (48), `VIDEO_MARGIN` (96),
 `getVideoWatermarkConfig`, `createVideoCalibrator`,
-`removeVideoWatermark`, and types `VideoWatermarkConfig`,
-`VideoCalibrator`, `VideoCalibration`, `VideoCalibrationSource`,
-`VideoRemoveOptions`.
+`removeVideoWatermark`, `processVideo`, and types
+`VideoWatermarkConfig`, `VideoCalibrator`, `VideoCalibration`,
+`VideoCalibrationSource`, `VideoRemoveOptions`, `ProcessVideoOptions`,
+`ProcessVideoResult`.
 
 Semantics:
 
@@ -267,6 +268,15 @@ Semantics:
   — the codec noise there is amplified by `1/(1−alpha)` — touching only
   the logo box grown by 4px; `{ smoothEdges: false }` yields the pure
   algebraic inversion, whose writes stay inside the logo box exactly.
+- `processVideo(frames, options?)` is the one-call form for a frame
+  sequence held in memory, shaped after `processImage`: it calibrates
+  over all frames, then either reverse-blends every frame in place
+  (`'processed'`) or — when nothing watermark-shaped is in the corner —
+  returns `'skipped'` with every frame byte-identical. No pixel is
+  written until calibration has succeeded, so a throw (empty sequence,
+  mismatched dimensions) also leaves every frame untouched. Skip is the
+  clean-video answer here; the streaming calibrator keeps its
+  `RangeError`, which the one-call form absorbs into the status.
 - Determinism: same frames in, same calibration and pixels out. There is
   no randomness and no time dependence.
 

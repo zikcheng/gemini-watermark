@@ -124,18 +124,31 @@ npm run build
 node tools/video/remove-veo-video.mjs input.mp4 output.mp4
 ```
 
-Or drive the API directly from your own frame source:
+Or drive the API directly from your own frame source. If the decoded
+frames fit in memory, one call does everything — the video analogue of
+`processImage`, skip semantics included:
+
+```js
+import { processVideo } from 'gemini-watermark';
+
+const result = processVideo(frames);           // RGB(A) ImageBuffers, modified in place
+if (result.status === 'skipped') {
+  // no watermark found — every frame left byte-identical
+}
+```
+
+For long videos, the streaming two-pass form holds one frame at a time:
 
 ```js
 import { createVideoCalibrator, removeVideoWatermark } from 'gemini-watermark';
 
 const calibrator = createVideoCalibrator(width, height);
-for (const frame of decodedFrames) {           // pass 1: RGB(A) ImageBuffers
+for (const frame of decodedFrames()) {         // pass 1: accumulate statistics
   calibrator.addFrame(frame);
 }
-const calibration = calibrator.calibrate();    // throws if no watermark geometry fits
+const calibration = calibrator.calibrate();    // throws if nothing watermark-shaped
 
-for (const frame of decodedFrames) {           // pass 2
+for (const frame of decodedFrames()) {         // pass 2: decode again
   removeVideoWatermark(frame, calibration);    // in place
 }
 ```
