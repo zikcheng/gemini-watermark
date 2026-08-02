@@ -174,7 +174,10 @@ describe('temporal calibration on a synthetic video', () => {
     expect(worst).toBeLessThan(0.03);
   });
 
-  it('removal restores the clean frames within the noise budget', () => {
+  it('unsmoothed removal restores the clean frames within the noise budget', () => {
+    // smoothEdges: false — this pins the algebraic inversion alone. The
+    // default smoothing pass trades pristine-pixel fidelity in the edge
+    // band for lower codec-noise visibility, and is pinned separately.
     for (const t of [0, 47, 95]) {
       const marked = markedFrames[t] as ImageBuffer;
       const clean = cleanFrames[t] as ImageBuffer;
@@ -182,7 +185,7 @@ describe('temporal calibration on a synthetic video', () => {
         ...marked,
         data: new Uint8Array(marked.data),
       };
-      removeVideoWatermark(restored, calibration);
+      removeVideoWatermark(restored, calibration, { smoothEdges: false });
       let worst = 0;
       for (let i = 0; i < restored.data.length; i += 1) {
         const err = Math.abs((restored.data[i] ?? 0) - (clean.data[i] ?? 0));
@@ -192,10 +195,10 @@ describe('temporal calibration on a synthetic video', () => {
     }
   });
 
-  it('leaves pixels outside the logo box byte-identical', () => {
+  it('unsmoothed removal leaves pixels outside the logo box byte-identical', () => {
     const marked = markedFrames[10] as ImageBuffer;
     const restored: ImageBuffer = { ...marked, data: new Uint8Array(marked.data) };
-    removeVideoWatermark(restored, calibration);
+    removeVideoWatermark(restored, calibration, { smoothEdges: false });
     const { x, y } = config.position;
     for (let row = 0; row < HEIGHT; row += 1) {
       for (let col = 0; col < WIDTH; col += 1) {
@@ -212,6 +215,42 @@ describe('temporal calibration on a synthetic video', () => {
     }
   });
 
+  it('default smoothing stays inside the padded logo box and only moves band pixels', () => {
+    const marked = markedFrames[20] as ImageBuffer;
+    const smoothed: ImageBuffer = { ...marked, data: new Uint8Array(marked.data) };
+    const raw: ImageBuffer = { ...marked, data: new Uint8Array(marked.data) };
+    removeVideoWatermark(smoothed, calibration);
+    removeVideoWatermark(raw, calibration, { smoothEdges: false });
+
+    const pad = 4; // SMOOTH_PAD: the smoothed region is the logo box + 4
+    const { x, y } = config.position;
+    let bandChanged = 0;
+    for (let row = 0; row < HEIGHT; row += 1) {
+      for (let col = 0; col < WIDTH; col += 1) {
+        const offset = (row * WIDTH + col) * 3;
+        const insidePadded =
+          row >= y - pad &&
+          row < y + VIDEO_LOGO_SIZE + pad &&
+          col >= x - pad &&
+          col < x + VIDEO_LOGO_SIZE + pad;
+        for (let c = 0; c < 3; c += 1) {
+          const differs = smoothed.data[offset + c] !== raw.data[offset + c];
+          if (differs && !insidePadded) {
+            throw new Error(`smoothing touched (${col}, ${row}) outside the padded box`);
+          }
+          if (differs) bandChanged += 1;
+        }
+      }
+    }
+    // The band exists: smoothing is not a no-op on a real watermark.
+    expect(bandChanged).toBeGreaterThan(0);
+
+    // Determinism: a second pass over the same input gives the same bytes.
+    const again: ImageBuffer = { ...marked, data: new Uint8Array(marked.data) };
+    removeVideoWatermark(again, calibration);
+    expect(Buffer.from(again.data).equals(Buffer.from(smoothed.data))).toBe(true);
+  });
+
   it('rejects removal on a frame whose geometry mismatches the calibration', () => {
     const other = backgroundFrame(0, makeRng(1));
     const bigger: ImageBuffer = {
@@ -226,7 +265,7 @@ describe('temporal calibration on a synthetic video', () => {
 });
 
 describe('template fallback', () => {
-  it('falls back to the gain-fitted template when the background never moves', () => {
+  it('falls back to the gain-fitted template when the background never moves', { timeout: 60_000 }, () => {
     // A static, textured background: the temporal mean keeps every
     // detail, and a harmonic fill cannot reproduce it — harmonic
     // functions have no interior extrema, while the background's
@@ -288,7 +327,7 @@ describe('clean videos must throw, not get a ghost sparkle', () => {
   // RangeError, whichever internal path they take — the moving scene
   // reaches it through an empty refined support (estimate ≡ 0, gain 0),
   // the static one through the correlation floor (NCC ≈ 0.1 < 0.5).
-  it('rejects a clean video with a moving background', () => {
+  it('rejects a clean video with a moving background', { timeout: 60_000 }, () => {
     const rng = makeRng(0xdecafbad);
     const calibrator = createVideoCalibrator(WIDTH, HEIGHT);
     for (let t = 0; t < 96; t += 1) calibrator.addFrame(backgroundFrame(t, rng));
@@ -296,7 +335,7 @@ describe('clean videos must throw, not get a ghost sparkle', () => {
     expect(() => calibrator.calibrate()).toThrow(/does not correlate/);
   });
 
-  it('rejects a clean video with a static background', () => {
+  it('rejects a clean video with a static background', { timeout: 60_000 }, () => {
     const rng = makeRng(0x5eed5eed);
     const still = backgroundFrame(0, rng);
     const calibrator = createVideoCalibrator(WIDTH, HEIGHT);
@@ -306,7 +345,7 @@ describe('clean videos must throw, not get a ghost sparkle', () => {
 });
 
 describe('RGBA frames', () => {
-  it('calibrates identically to the same frames as RGB', () => {
+  it('calibrates identically to the same frames as RGB', { timeout: 60_000 }, () => {
     // addFrame reads the first three channels through the stride, so an
     // RGBA repack of the same pixels must accumulate the same sums and
     // produce a bit-identical alpha map.

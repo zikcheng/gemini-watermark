@@ -24,13 +24,23 @@
  *
  * The estimator: the temporal mean of the watermark window is
  * `mean = (1−alpha)·meanBg + alpha·255`, and camera/scene motion makes
- * `meanBg` smooth, so it can be recovered by harmonic inpainting (solving
- * the Laplace equation over the watermark support with the surrounding
- * ring as the boundary), leaving alpha as the only unknown. A support
- * mask is refined once from a first-round estimate, and the result is
- * sanity-checked against the V1 template: if the correlation gate fails
- * (static background, too few frames), calibration falls back to the
- * template scaled by a least-squares gain.
+ * `meanBg` smooth, so it can be recovered by biharmonic inpainting
+ * (solving the plate equation over the watermark support with the
+ * surrounding ring as the boundary), leaving alpha as the only unknown.
+ * Biharmonic rather than harmonic by measurement: a membrane cannot
+ * continue a boundary *slope*, and on the 16:9 sample — where a soft
+ * shadow ramp crosses the corner — the harmonic estimate left a faint
+ * sparkle-shaped residue in the output's temporal mean
+ * (residual/template NCC 0.16); the plate solution removed it (NCC ≈ 0)
+ * at equal edge-band noise. A support mask is refined once from a
+ * first-round estimate, and the result is sanity-checked against the V1
+ * template: if the correlation gate fails (static background, too few
+ * frames), calibration falls back to the template scaled by an
+ * edge-calibrated gain.
+ *
+ * Removal then reverse-blends each frame and, by default, smooths the
+ * thin band along the sparkle's edges where the division amplifies
+ * codec noise — see `SMOOTH_*` for how those numbers were chosen.
  *
  * Everything here is deterministic per-pixel math on `ImageBuffer`s; the
  * ffmpeg decode/encode glue lives in `tools/video/`, outside the core.
@@ -38,7 +48,11 @@
 
 import { getSourceAlphaMap } from './alpha-maps.js';
 import { removeWatermarkRegion } from './blend.js';
+import { quantizeU8 } from './quantize.js';
 import type { ImageBuffer, Point } from './types.js';
+
+/** Channels smoothed. The A channel of an RGBA buffer is never written. */
+const COLOR_CHANNELS = 3;
 
 /** Edge of the video logo box, px. Measured: alpha support spans 48px. */
 export const VIDEO_LOGO_SIZE = 48;
@@ -97,11 +111,15 @@ const TEMPLATE_NCC_GATE = 0.98;
 const TEMPLATE_NCC_FLOOR = 0.5;
 
 /**
- * Harmonic fill iteration cap and convergence threshold. Gauss–Seidel on
- * a 140×140 window converges to <1e-4 max-delta in well under 4000
- * sweeps; the cap only bounds pathological inputs.
+ * Fill iteration caps and convergence threshold. Gauss–Seidel on a
+ * 140×140 window converges to <1e-4 max-delta in well under the caps;
+ * they only bound pathological inputs. The biharmonic pass gets more
+ * sweeps because the plate stencil propagates information more slowly,
+ * and over-relaxation (SOR) compensates for most of that.
  */
 const FILL_MAX_SWEEPS = 4000;
+const BIHARMONIC_MAX_SWEEPS = 8000;
+const BIHARMONIC_RELAXATION = 1.5;
 const FILL_TOLERANCE = 1e-4;
 
 /**
@@ -110,6 +128,32 @@ const FILL_TOLERANCE = 1e-4;
  * average (or 0), matching how the measurement scripts handled them.
  */
 const MIN_ALPHA_DENOMINATOR = 8;
+
+/**
+ * Template-gradient magnitude above which a cell belongs to the
+ * sparkle's edge band — the thin outline where removal's `1/(1−alpha)`
+ * amplifies codec noise and where the fallback's gain search listens
+ * for residual edge structure.
+ */
+const EDGE_BAND_THRESHOLD = 0.02;
+
+/**
+ * Edge-band smoothing, applied after the reverse blend (on by default,
+ * `smoothEdges: false` disables). Each band pixel is pulled toward its
+ * 5×5 Gaussian-blurred value by a weight proportional to the local
+ * alpha gradient. The numbers come from a parameter sweep on the sample
+ * videos, scored by mean |Laplacian| per frame inside the band versus a
+ * control ring of untouched background: unsmoothed measures roughly 2×
+ * the ring (5.8 vs 3.2 and 4.7 vs 2.6); this setting lands at the
+ * ring's own level (3.3 and 3.1); stronger settings dip *below* it,
+ * i.e. the band becomes visibly smoother than its surroundings.
+ */
+const SMOOTH_SIGMA = 1.0;
+const SMOOTH_KERNEL_RADIUS = 2;
+const SMOOTH_WEIGHT_SCALE = 6;
+const SMOOTH_WEIGHT_MAX = 0.7;
+/** The smoothed region: the logo box grown by this on every side. */
+const SMOOTH_PAD = 4;
 
 /** Placement of the video watermark and its square calibration region. */
 export interface VideoWatermarkConfig {
@@ -139,9 +183,24 @@ export interface VideoCalibration {
    * the estimate; below it, `alpha` is the template fallback.
    */
   templateNcc: number;
-  /** Least-squares opacity of the estimate relative to the V1-48 map. */
+  /**
+   * On the `'template'` path, the opacity the fallback alpha actually
+   * uses (edge-calibrated, least-squares as backstop); on the
+   * `'estimated'` path, the diagnostic least-squares fit of the
+   * estimate against the V1-48 map.
+   */
   templateGain: number;
   source: VideoCalibrationSource;
+}
+
+/** Options for {@link removeVideoWatermark}. */
+export interface VideoRemoveOptions {
+  /**
+   * Smooth the sparkle's edge band after the reverse blend, hiding the
+   * codec noise the division amplifies there. Default true; disable for
+   * the pure algebraic inversion.
+   */
+  smoothEdges?: boolean;
 }
 
 /** Accumulates decoded frames and produces a {@link VideoCalibration}. */
@@ -225,6 +284,51 @@ function harmonicFill(field: Float64Array, mask: Uint8Array, edge: number): void
   }
 }
 
+/**
+ * Solve the biharmonic (plate) equation over `mask` pixels in place,
+ * seeded with the harmonic solution so the slow 13-point stencil starts
+ * near the answer. Unlike a membrane, a plate continues the boundary's
+ * slope into the hole, which is what recovers a background whose shading
+ * ramps *through* the watermark. The stencil needs a 2-pixel apron, so
+ * masked pixels within 2 of the window edge would keep their harmonic
+ * value — the support never reaches there (it sits centered, ≥15px in).
+ */
+function biharmonicFill(field: Float64Array, mask: Uint8Array, edge: number): void {
+  harmonicFill(field, mask, edge);
+  for (let sweep = 0; sweep < BIHARMONIC_MAX_SWEEPS; sweep += 1) {
+    let delta = 0;
+    for (let row = 2; row < edge - 2; row += 1) {
+      for (let col = 2; col < edge - 2; col += 1) {
+        const i = row * edge + col;
+        if (mask[i] === 0) continue;
+        // ∇⁴f = 0  ⇒  f = [8·(edge neighbours) − 2·(diagonals) − (distance-2)] / 20
+        const target =
+          (8 *
+            ((field[i - 1] ?? 0) +
+              (field[i + 1] ?? 0) +
+              (field[i - edge] ?? 0) +
+              (field[i + edge] ?? 0)) -
+            2 *
+              ((field[i - edge - 1] ?? 0) +
+                (field[i - edge + 1] ?? 0) +
+                (field[i + edge - 1] ?? 0) +
+                (field[i + edge + 1] ?? 0)) -
+            ((field[i - 2] ?? 0) +
+              (field[i + 2] ?? 0) +
+              (field[i - 2 * edge] ?? 0) +
+              (field[i + 2 * edge] ?? 0))) /
+          20;
+        const current = field[i] ?? 0;
+        const next = current + BIHARMONIC_RELAXATION * (target - current);
+        const drift = Math.abs(next - current);
+        if (drift > delta) delta = drift;
+        field[i] = next;
+      }
+    }
+    if (delta < FILL_TOLERANCE) break;
+  }
+}
+
 /** Keep only the largest 4-connected component of `mask`, in place. */
 function keepLargestComponent(mask: Uint8Array, edge: number): void {
   const labels = new Int32Array(mask.length).fill(-1);
@@ -299,9 +403,9 @@ function dilate(mask: Uint8Array, edge: number, r: number): Uint8Array {
 }
 
 /**
- * One estimation round: harmonic-fill each channel's temporal mean over
- * `support`, then read alpha out of the blend equation, averaging the
- * channels that are well-conditioned.
+ * One estimation round: biharmonic-fill each channel's temporal mean
+ * over `support`, then read alpha out of the blend equation, averaging
+ * the channels that are well-conditioned.
  */
 function estimateAlpha(
   means: readonly [Float64Array, Float64Array, Float64Array],
@@ -314,7 +418,7 @@ function estimateAlpha(
   for (let c = 0; c < 3; c += 1) {
     const mean = means[c] as Float64Array;
     filled.set(mean);
-    harmonicFill(filled, support, edge);
+    biharmonicFill(filled, support, edge);
     for (let i = 0; i < filled.length; i += 1) {
       const denominator = 255 - (filled[i] ?? 0);
       if (denominator > MIN_ALPHA_DENOMINATOR) {
@@ -353,6 +457,69 @@ function correlate(a: Float32Array, b: Float32Array): number {
   }
   const denominator = Math.sqrt(varA * varB);
   return denominator > 0 ? cross / denominator : 0;
+}
+
+/**
+ * Fallback opacity via a 1-D edge search instead of trusting the noisy
+ * least-squares fit. Reverse blending is affine in the observed value
+ * per pixel, so removing from the temporal *mean* equals the mean of
+ * removed frames — the search runs entirely on the stored window sums.
+ * `C(g)` correlates the removed mean's gradients with the template's
+ * over the edge band; the correct gain zeroes it ("turn the opacity up
+ * until the sparkle's outline vanishes"), found by bisection since
+ * `C` decreases monotonically in `g`. On synthetic static probes this
+ * lands within 0.06 of the injected opacity where least squares was
+ * off by 0.12 (harsh texture), and within 0.006 on smooth backgrounds.
+ * Returns undefined when `C(0) ≤ 0` — no watermark-signed edge energy
+ * to calibrate against.
+ */
+function edgeSearchGain(
+  means: readonly [Float64Array, Float64Array, Float64Array],
+  template: Float32Array,
+  edge: number,
+): number | undefined {
+  const pad = (edge - VIDEO_LOGO_SIZE) / 2;
+  const logoAlpha = (row: number, col: number): number =>
+    row >= 0 && row < VIDEO_LOGO_SIZE && col >= 0 && col < VIDEO_LOGO_SIZE
+      ? (template[row * VIDEO_LOGO_SIZE + col] ?? 0)
+      : 0;
+
+  const correlation = (gain: number): number => {
+    let acc = 0;
+    for (let row = 0; row < VIDEO_LOGO_SIZE; row += 1) {
+      for (let col = 0; col < VIDEO_LOGO_SIZE; col += 1) {
+        const tx = (logoAlpha(row, col + 1) - logoAlpha(row, col - 1)) / 2;
+        const ty = (logoAlpha(row + 1, col) - logoAlpha(row - 1, col)) / 2;
+        if (Math.hypot(tx, ty) <= EDGE_BAND_THRESHOLD) continue;
+        for (let c = 0; c < 3; c += 1) {
+          const mean = means[c] as Float64Array;
+          const removed = (r: number, q: number): number => {
+            const a = gain * logoAlpha(r, q);
+            return ((mean[(r + pad) * edge + (q + pad)] ?? 0) - a * 255) / (1 - a);
+          };
+          const rx = (removed(row, col + 1) - removed(row, col - 1)) / 2;
+          const ry = (removed(row + 1, col) - removed(row - 1, col)) / 2;
+          acc += rx * tx + ry * ty;
+        }
+      }
+    }
+    return acc;
+  };
+
+  let peak = 0;
+  for (let i = 0; i < template.length; i += 1) {
+    const value = template[i] ?? 0;
+    if (value > peak) peak = value;
+  }
+  if (!(peak > 0) || correlation(0) <= 0) return undefined;
+  let low = 0;
+  let high = ALPHA_CEILING / peak;
+  for (let step = 0; step < 60; step += 1) {
+    const mid = (low + high) / 2;
+    if (correlation(mid) > 0) low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
 }
 
 /**
@@ -472,6 +639,7 @@ export function createVideoCalibrator(width: number, height: number): VideoCalib
 
       let alpha = estimate;
       let source: VideoCalibrationSource = 'estimated';
+      let usedGain = gain;
       if (ncc < TEMPLATE_NCC_GATE) {
         if (ncc < TEMPLATE_NCC_FLOOR || !(gain > 0)) {
           throw new RangeError(
@@ -480,9 +648,14 @@ export function createVideoCalibrator(width: number, height: number): VideoCalib
               'watermark in the bottom-right corner?',
           );
         }
+        // The edge search reads the opacity off the sparkle outline and
+        // is much less exposed to the fill bias that pollutes both the
+        // per-pixel estimate and its least-squares gain; the fit only
+        // remains as the backstop for a search with no bracket.
+        usedGain = edgeSearchGain(means, template, edge) ?? gain;
         alpha = new Float32Array(template.length);
         for (let i = 0; i < template.length; i += 1) {
-          alpha[i] = (template[i] ?? 0) * gain;
+          alpha[i] = (template[i] ?? 0) * usedGain;
         }
         source = 'template';
       }
@@ -493,7 +666,7 @@ export function createVideoCalibrator(width: number, height: number): VideoCalib
         position: config.position,
         frames,
         templateNcc: ncc,
-        templateGain: gain,
+        templateGain: usedGain,
         source,
       };
     },
@@ -501,15 +674,130 @@ export function createVideoCalibrator(width: number, height: number): VideoCalib
 }
 
 /**
+ * Per-calibration smoothing plan: the weight map and Gaussian kernel
+ * depend only on the alpha map, and the scratch buffer lets the
+ * per-frame pass run allocation-free. Cached per calibration object.
+ */
+interface SmoothPlan {
+  /** Region edge: logo box grown by SMOOTH_PAD on each side. */
+  size: number;
+  /** Per-pixel blend weight toward the blurred value; 0 leaves it. */
+  weights: Float64Array;
+  /** Normalized (2·radius+1)² Gaussian taps. */
+  kernel: Float64Array;
+  /** Snapshot of the region's RGB, source for every blur tap. */
+  scratch: Float64Array;
+}
+
+const smoothPlans = new WeakMap<VideoCalibration, SmoothPlan>();
+
+function getSmoothPlan(calibration: VideoCalibration): SmoothPlan {
+  const cached = smoothPlans.get(calibration);
+  if (cached !== undefined) return cached;
+
+  const logo = calibration.logoSize;
+  const size = logo + 2 * SMOOTH_PAD;
+  const radius = SMOOTH_KERNEL_RADIUS;
+  const kernel = new Float64Array((2 * radius + 1) ** 2);
+  let total = 0;
+  let tap = 0;
+  for (let dy = -radius; dy <= radius; dy += 1) {
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      const value = Math.exp(-(dx * dx + dy * dy) / (2 * SMOOTH_SIGMA * SMOOTH_SIGMA));
+      kernel[tap] = value;
+      total += value;
+      tap += 1;
+    }
+  }
+  for (let i = 0; i < kernel.length; i += 1) kernel[i] = (kernel[i] ?? 0) / total;
+
+  const { alpha } = calibration;
+  const logoAlpha = (row: number, col: number): number =>
+    row >= 0 && row < logo && col >= 0 && col < logo ? (alpha[row * logo + col] ?? 0) : 0;
+  const weights = new Float64Array(size * size);
+  for (let row = 0; row < size; row += 1) {
+    for (let col = 0; col < size; col += 1) {
+      const gx = (logoAlpha(row - SMOOTH_PAD, col - SMOOTH_PAD + 1) -
+        logoAlpha(row - SMOOTH_PAD, col - SMOOTH_PAD - 1)) / 2;
+      const gy = (logoAlpha(row - SMOOTH_PAD + 1, col - SMOOTH_PAD) -
+        logoAlpha(row - SMOOTH_PAD - 1, col - SMOOTH_PAD)) / 2;
+      const weight = Math.hypot(gx, gy) * SMOOTH_WEIGHT_SCALE;
+      weights[row * size + col] = weight > SMOOTH_WEIGHT_MAX ? SMOOTH_WEIGHT_MAX : weight;
+    }
+  }
+
+  const plan: SmoothPlan = {
+    size,
+    weights,
+    kernel,
+    scratch: new Float64Array(size * size * COLOR_CHANNELS),
+  };
+  smoothPlans.set(calibration, plan);
+  return plan;
+}
+
+/** Blend edge-band pixels toward their Gaussian blur, in place. */
+function smoothEdgeBand(frame: ImageBuffer, calibration: VideoCalibration): void {
+  const plan = getSmoothPlan(calibration);
+  const { size, weights, kernel, scratch } = plan;
+  const radius = SMOOTH_KERNEL_RADIUS;
+  const { data, channels, width } = frame;
+  // In-bounds by construction: the calibration window pad (46) exceeds
+  // SMOOTH_PAD on every side, and the config validated that placement.
+  const originX = calibration.position.x - SMOOTH_PAD;
+  const originY = calibration.position.y - SMOOTH_PAD;
+
+  for (let row = 0; row < size; row += 1) {
+    const frameRow = (originY + row) * width;
+    for (let col = 0; col < size; col += 1) {
+      const offset = (frameRow + originX + col) * channels;
+      const cell = (row * size + col) * COLOR_CHANNELS;
+      scratch[cell] = data[offset] ?? 0;
+      scratch[cell + 1] = data[offset + 1] ?? 0;
+      scratch[cell + 2] = data[offset + 2] ?? 0;
+    }
+  }
+
+  for (let row = 0; row < size; row += 1) {
+    const frameRow = (originY + row) * width;
+    for (let col = 0; col < size; col += 1) {
+      const weight = weights[row * size + col] ?? 0;
+      if (weight <= 0) continue;
+      const offset = (frameRow + originX + col) * channels;
+      for (let c = 0; c < COLOR_CHANNELS; c += 1) {
+        let blurred = 0;
+        let tap = 0;
+        for (let dy = -radius; dy <= radius; dy += 1) {
+          let rr = row + dy;
+          if (rr < 0) rr = 0;
+          else if (rr >= size) rr = size - 1;
+          for (let dx = -radius; dx <= radius; dx += 1) {
+            let cc = col + dx;
+            if (cc < 0) cc = 0;
+            else if (cc >= size) cc = size - 1;
+            blurred += (kernel[tap] ?? 0) * (scratch[(rr * size + cc) * COLOR_CHANNELS + c] ?? 0);
+            tap += 1;
+          }
+        }
+        const current = scratch[(row * size + col) * COLOR_CHANNELS + c] ?? 0;
+        data[offset + c] = quantizeU8((1 - weight) * current + weight * blurred);
+      }
+    }
+  }
+}
+
+/**
  * Reverse-blend one frame in place using a calibration produced for the
- * same dimensions. Thin wrapper over {@link removeWatermarkRegion}; the
- * A channel of RGBA frames is untouched.
+ * same dimensions, then (by default) smooth the sparkle's edge band.
+ * The blend is a thin wrapper over {@link removeWatermarkRegion}; the
+ * A channel of RGBA frames is untouched by both passes.
  *
  * @throws RangeError when the frame does not match the calibration
  */
 export function removeVideoWatermark(
   frame: ImageBuffer,
   calibration: VideoCalibration,
+  options: VideoRemoveOptions = {},
 ): void {
   const expected = getVideoWatermarkConfig(frame.width, frame.height);
   if (
@@ -530,4 +818,7 @@ export function removeVideoWatermark(
     calibration.logoSize,
     calibration.position,
   );
+  if (options.smoothEdges !== false) {
+    smoothEdgeBand(frame, calibration);
+  }
 }

@@ -437,3 +437,37 @@ calibration window, and the measurements above are pinned by synthetic
 round-trip tests in `test/video.test.ts`. Should upstream ever grow a
 video mode, its behaviour takes over and this entry records why ours
 looked the way it did.
+
+**Addendum (2026-08-02, quality pass)**: five estimator/finishing
+variants were raced on the two samples, scored by three signals — the
+output temporal mean's residual against a smooth background reference,
+that residual's correlation with the sparkle template (the non-circular
+signal; the residual-vs-fill score favors whichever fill the estimator
+itself used), and mean per-frame |Laplacian| in the sparkle's edge band
+versus an untouched control ring. Results:
+
+- **Biharmonic fill wins** over harmonic: a membrane cannot continue a
+  boundary slope, and the 16:9 corner has a shadow ramp crossing it —
+  harmonic left a sparkle-shaped residue (template NCC 0.16, faintly
+  visible in the 240-frame mean), biharmonic erased it (NCC ≈ 0) at
+  equal band noise. 9:16 unchanged.
+- **Temporal median lost** (residue NCC 0.22–0.25 on both): the median
+  of a slowly moving edge stays a sharp edge, which the fill cannot
+  predict; the mean blurs it into a ramp the plate handles.
+- **Dihedral symmetrization lost**: the real asset is itself asymmetric
+  by 1.6% (measured on the V1-48 source map), so symmetrizing misplaces
+  edges — band noise rose from ~6 to ~7.9.
+- **Cross-video shared shape lost** to per-video estimates on every
+  metric; the per-video gain difference is real but so are small
+  per-video shape deviations.
+- **Edge-band smoothing added** (weight ∝ |∇alpha|, capped 0.7, 5×5
+  Gaussian σ1.0): band noise 5.8/4.7 → 3.3/3.1 against control rings at
+  3.2/2.6 — the band lands at its surroundings' natural texture level;
+  stronger settings dip below it and read as blur. On by default,
+  `smoothEdges: false` restores the pure inversion.
+- **Fallback gain is now edge-calibrated**: removal is affine per pixel
+  in the observation, so removing from the temporal mean equals the
+  mean of removals, and a bisection on "template-edge energy left in
+  the removed mean" reads the opacity off the sparkle outline. On
+  static synthetic probes it lands within 0.06 of truth (harsh texture)
+  and 0.006 (smooth) where least squares was off by 0.12.

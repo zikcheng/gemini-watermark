@@ -141,11 +141,14 @@ for (const frame of decodedFrames) {           // pass 2
 ```
 
 `calibration.source` tells you whether the per-video estimate was trusted
-(`'estimated'`) or the calibrator fell back to the gain-fitted V1
-template (`'template'`, e.g. on a near-static scene). This path is an
-extension measured from real Veo 720p output, not part of the
-GeminiWatermarkTool port — see `docs/plan/DEVIATIONS.md` D8 for the
-measurements behind it.
+(`'estimated'`) or the calibrator fell back to the edge-calibrated V1
+template (`'template'`, e.g. on a near-static scene). Removal also
+smooths the thin band along the sparkle's edges by default, where
+reverse blending amplifies codec noise — pass `{ smoothEdges: false }`
+for the pure algebraic inversion. This path is an extension measured
+from real Veo 720p output, not part of the GeminiWatermarkTool port —
+see `docs/plan/DEVIATIONS.md` D8 (and its quality addendum) for the
+measurements behind every constant.
 
 ## API
 

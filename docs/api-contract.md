@@ -237,7 +237,8 @@ belong to a later version" clause). No upstream counterpart exists;
 Exports: `VIDEO_LOGO_SIZE` (48), `VIDEO_MARGIN` (96),
 `getVideoWatermarkConfig`, `createVideoCalibrator`,
 `removeVideoWatermark`, and types `VideoWatermarkConfig`,
-`VideoCalibrator`, `VideoCalibration`, `VideoCalibrationSource`.
+`VideoCalibrator`, `VideoCalibration`, `VideoCalibrationSource`,
+`VideoRemoveOptions`.
 
 Semantics:
 
@@ -258,10 +259,14 @@ Semantics:
   `calibrate()` throws `RangeError` rather than hand back an alpha that
   would blend a ghost sparkle *into* a clean video. It also throws
   `RangeError` with no frames.
-- `removeVideoWatermark(frame, calibration)` reverse-blends in place via
-  the same arithmetic as `removeWatermarkRegion` (alpha-skip threshold,
-  MAX_ALPHA clamp, A channel untouched) and throws `RangeError` when the
-  frame's geometry disagrees with the calibration's.
+- `removeVideoWatermark(frame, calibration, options?)` reverse-blends in
+  place via the same arithmetic as `removeWatermarkRegion` (alpha-skip
+  threshold, MAX_ALPHA clamp, A channel untouched) and throws
+  `RangeError` when the frame's geometry disagrees with the
+  calibration's. By default it then smooths the sparkle's thin edge band
+  — the codec noise there is amplified by `1/(1−alpha)` — touching only
+  the logo box grown by 4px; `{ smoothEdges: false }` yields the pure
+  algebraic inversion, whose writes stay inside the logo box exactly.
 - Determinism: same frames in, same calibration and pixels out. There is
   no randomness and no time dependence.
 

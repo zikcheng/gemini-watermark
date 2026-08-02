@@ -50,6 +50,7 @@ export type {
   VideoCalibration,
   VideoCalibrationSource,
   VideoCalibrator,
+  VideoRemoveOptions,
   VideoWatermarkConfig,
 } from './video.js';
 
