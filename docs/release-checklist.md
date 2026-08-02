@@ -102,6 +102,14 @@ scripts. Two consequences worth knowing: `npm run check` therefore builds
 in the log, because `attw` swallows the child process's output; confirm it
 with the mtime of `dist/index.js` rather than by reading the console.)
 
+**Do not run `check` (or `check:package`) after packing.** `attw --pack`
+packs into the same directory and cleans up afterwards by name, which
+deletes the tarball this step just produced — measured, not theorised:
+`npm pack && ls *.tgz` then `npm run check:package && ls *.tgz` goes from
+present to `No such file`. The step-4-then-step-5 order above is therefore
+load-bearing; if you need to re-run the gate, re-pack afterwards, or copy
+the tarball somewhere else first.
+
 ### 6. Consumer smoke — ESM JavaScript and TypeScript
 
 Install the tarball the way a user would, then prove it imports, type-checks
