@@ -174,6 +174,27 @@ deliberately: it exercises the whole pipeline (both variants attempted, both
 circuit-broken) and asserts the safety property that a skip returns the
 caller's bytes untouched.
 
+Since 0.2.0, add the video surface to `esm.mjs` — it has its own skip
+path, and the same safety property one dimension up:
+
+```js
+import { processVideo, getVideoWatermarkConfig } from 'gemini-watermark';
+
+console.log(getVideoWatermarkConfig(1280, 720).position);   // { x: 1136, y: 576 }
+
+const frames = Array.from({ length: 4 }, () => ({
+  data: new Uint8Array(1280 * 720 * 3), width: 1280, height: 720, channels: 3,
+}));
+const untouched = frames.map((f) => Uint8Array.from(f.data));
+const video = processVideo(frames);
+
+console.log(video.status, video.frames);                     // skipped 4
+if (video.status !== 'skipped') throw new Error('a blank video must skip');
+if (!frames.every((f, i) => f.data.every((b, j) => b === untouched[i][j]))) {
+  throw new Error('a skip must not touch the frames');
+}
+```
+
 ### 7. Land the version bump
 
 The rehearsal's `npm version` happened in the clone, which is thrown away —
@@ -257,8 +278,10 @@ npm i gemini-watermark@X.Y.Z
 node -e "import('gemini-watermark').then(m => console.log(Object.keys(m).sort().join(' ')))"
 ```
 
-Expected: the nine exported functions, and no resolution error. Then confirm
-the npm page renders the README and lists the right files.
+Expected: every runtime export — as of 0.2.0 that is 13 functions plus the
+two `VIDEO_*` constants, the list `test/api-contract.test.ts` locks — and
+no resolution error. Then confirm the npm page renders the README and
+lists the right files.
 
 - [ ] Published version installs and imports from the registry.
 - [ ] `npm view gemini-watermark` shows the expected version, license and

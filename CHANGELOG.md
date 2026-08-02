@@ -12,6 +12,18 @@ the port was wrong about upstream.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-02
+
+Adds video support. The image engine is untouched — every image
+behaviour, score and pixel is identical to 0.1.2 — and the new surface
+is purely additive, which is what makes this a minor rather than a
+major.
+
+Note the different provenance. Everything before this release is a port
+whose authority is the C++ reference; the video path has no upstream to
+defer to, so its authority is **measurement** on real Veo output,
+recorded in `docs/plan/DEVIATIONS.md` D8 and its quality addendum.
+
 ### Added
 
 - **Veo video watermark removal** — an extension beyond the upstream
@@ -143,7 +155,8 @@ upstream-equivalent.
   fixtures processed by the reference binary, not against collected real
   Gemini output.
 
-[Unreleased]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/zikcheng/gemini-watermark/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/zikcheng/gemini-watermark/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/zikcheng/gemini-watermark/releases/tag/v0.1.0
